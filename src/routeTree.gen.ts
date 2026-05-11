@@ -9,23 +9,35 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SuporteRouteImport } from './routes/suporte'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as PedidosRouteImport } from './routes/pedidos'
+import { Route as OsRouteImport } from './routes/os'
 import { Route as OrcamentosRouteImport } from './routes/orcamentos'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LeadsRouteImport } from './routes/leads'
+import { Route as FinanceiroRouteImport } from './routes/financeiro'
+import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ContratosRouteImport } from './routes/contratos'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as CatalogoRouteImport } from './routes/catalogo'
+import { Route as AtivosRouteImport } from './routes/ativos'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SuporteIdRouteImport } from './routes/suporte.$id'
 import { Route as PedidosIdRouteImport } from './routes/pedidos.$id'
+import { Route as OsIdRouteImport } from './routes/os.$id'
 import { Route as OrcamentosNovoRouteImport } from './routes/orcamentos.novo'
 import { Route as OrcamentosIdRouteImport } from './routes/orcamentos.$id'
 import { Route as ContratosIdRouteImport } from './routes/contratos.$id'
 import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
 
+const SuporteRoute = SuporteRouteImport.update({
+  id: '/suporte',
+  path: '/suporte',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PipelineRoute = PipelineRouteImport.update({
   id: '/pipeline',
   path: '/pipeline',
@@ -34,6 +46,11 @@ const PipelineRoute = PipelineRouteImport.update({
 const PedidosRoute = PedidosRouteImport.update({
   id: '/pedidos',
   path: '/pedidos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OsRoute = OsRouteImport.update({
+  id: '/os',
+  path: '/os',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrcamentosRoute = OrcamentosRouteImport.update({
@@ -49,6 +66,16 @@ const LoginRoute = LoginRouteImport.update({
 const LeadsRoute = LeadsRouteImport.update({
   id: '/leads',
   path: '/leads',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FinanceiroRoute = FinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EstoqueRoute = EstoqueRouteImport.update({
+  id: '/estoque',
+  path: '/estoque',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -76,15 +103,30 @@ const CatalogoRoute = CatalogoRouteImport.update({
   path: '/catalogo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AtivosRoute = AtivosRouteImport.update({
+  id: '/ativos',
+  path: '/ativos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SuporteIdRoute = SuporteIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => SuporteRoute,
+} as any)
 const PedidosIdRoute = PedidosIdRouteImport.update({
   id: '/$id',
   path: '/$id',
   getParentRoute: () => PedidosRoute,
+} as any)
+const OsIdRoute = OsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => OsRoute,
 } as any)
 const OrcamentosNovoRoute = OrcamentosNovoRouteImport.update({
   id: '/novo',
@@ -109,132 +151,186 @@ const ClientesIdRoute = ClientesIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/ativos': typeof AtivosRoute
   '/catalogo': typeof CatalogoRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/configuracoes': typeof ConfiguracoesRoute
   '/contratos': typeof ContratosRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/estoque': typeof EstoqueRoute
+  '/financeiro': typeof FinanceiroRoute
   '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
   '/orcamentos': typeof OrcamentosRouteWithChildren
+  '/os': typeof OsRouteWithChildren
   '/pedidos': typeof PedidosRouteWithChildren
   '/pipeline': typeof PipelineRoute
+  '/suporte': typeof SuporteRouteWithChildren
   '/clientes/$id': typeof ClientesIdRoute
   '/contratos/$id': typeof ContratosIdRoute
   '/orcamentos/$id': typeof OrcamentosIdRoute
   '/orcamentos/novo': typeof OrcamentosNovoRoute
+  '/os/$id': typeof OsIdRoute
   '/pedidos/$id': typeof PedidosIdRoute
+  '/suporte/$id': typeof SuporteIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/ativos': typeof AtivosRoute
   '/catalogo': typeof CatalogoRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/configuracoes': typeof ConfiguracoesRoute
   '/contratos': typeof ContratosRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/estoque': typeof EstoqueRoute
+  '/financeiro': typeof FinanceiroRoute
   '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
   '/orcamentos': typeof OrcamentosRouteWithChildren
+  '/os': typeof OsRouteWithChildren
   '/pedidos': typeof PedidosRouteWithChildren
   '/pipeline': typeof PipelineRoute
+  '/suporte': typeof SuporteRouteWithChildren
   '/clientes/$id': typeof ClientesIdRoute
   '/contratos/$id': typeof ContratosIdRoute
   '/orcamentos/$id': typeof OrcamentosIdRoute
   '/orcamentos/novo': typeof OrcamentosNovoRoute
+  '/os/$id': typeof OsIdRoute
   '/pedidos/$id': typeof PedidosIdRoute
+  '/suporte/$id': typeof SuporteIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/ativos': typeof AtivosRoute
   '/catalogo': typeof CatalogoRoute
   '/clientes': typeof ClientesRouteWithChildren
   '/configuracoes': typeof ConfiguracoesRoute
   '/contratos': typeof ContratosRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/estoque': typeof EstoqueRoute
+  '/financeiro': typeof FinanceiroRoute
   '/leads': typeof LeadsRoute
   '/login': typeof LoginRoute
   '/orcamentos': typeof OrcamentosRouteWithChildren
+  '/os': typeof OsRouteWithChildren
   '/pedidos': typeof PedidosRouteWithChildren
   '/pipeline': typeof PipelineRoute
+  '/suporte': typeof SuporteRouteWithChildren
   '/clientes/$id': typeof ClientesIdRoute
   '/contratos/$id': typeof ContratosIdRoute
   '/orcamentos/$id': typeof OrcamentosIdRoute
   '/orcamentos/novo': typeof OrcamentosNovoRoute
+  '/os/$id': typeof OsIdRoute
   '/pedidos/$id': typeof PedidosIdRoute
+  '/suporte/$id': typeof SuporteIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/ativos'
     | '/catalogo'
     | '/clientes'
     | '/configuracoes'
     | '/contratos'
     | '/dashboard'
+    | '/estoque'
+    | '/financeiro'
     | '/leads'
     | '/login'
     | '/orcamentos'
+    | '/os'
     | '/pedidos'
     | '/pipeline'
+    | '/suporte'
     | '/clientes/$id'
     | '/contratos/$id'
     | '/orcamentos/$id'
     | '/orcamentos/novo'
+    | '/os/$id'
     | '/pedidos/$id'
+    | '/suporte/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/ativos'
     | '/catalogo'
     | '/clientes'
     | '/configuracoes'
     | '/contratos'
     | '/dashboard'
+    | '/estoque'
+    | '/financeiro'
     | '/leads'
     | '/login'
     | '/orcamentos'
+    | '/os'
     | '/pedidos'
     | '/pipeline'
+    | '/suporte'
     | '/clientes/$id'
     | '/contratos/$id'
     | '/orcamentos/$id'
     | '/orcamentos/novo'
+    | '/os/$id'
     | '/pedidos/$id'
+    | '/suporte/$id'
   id:
     | '__root__'
     | '/'
+    | '/ativos'
     | '/catalogo'
     | '/clientes'
     | '/configuracoes'
     | '/contratos'
     | '/dashboard'
+    | '/estoque'
+    | '/financeiro'
     | '/leads'
     | '/login'
     | '/orcamentos'
+    | '/os'
     | '/pedidos'
     | '/pipeline'
+    | '/suporte'
     | '/clientes/$id'
     | '/contratos/$id'
     | '/orcamentos/$id'
     | '/orcamentos/novo'
+    | '/os/$id'
     | '/pedidos/$id'
+    | '/suporte/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AtivosRoute: typeof AtivosRoute
   CatalogoRoute: typeof CatalogoRoute
   ClientesRoute: typeof ClientesRouteWithChildren
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   ContratosRoute: typeof ContratosRouteWithChildren
   DashboardRoute: typeof DashboardRoute
+  EstoqueRoute: typeof EstoqueRoute
+  FinanceiroRoute: typeof FinanceiroRoute
   LeadsRoute: typeof LeadsRoute
   LoginRoute: typeof LoginRoute
   OrcamentosRoute: typeof OrcamentosRouteWithChildren
+  OsRoute: typeof OsRouteWithChildren
   PedidosRoute: typeof PedidosRouteWithChildren
   PipelineRoute: typeof PipelineRoute
+  SuporteRoute: typeof SuporteRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/suporte': {
+      id: '/suporte'
+      path: '/suporte'
+      fullPath: '/suporte'
+      preLoaderRoute: typeof SuporteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pipeline': {
       id: '/pipeline'
       path: '/pipeline'
@@ -247,6 +343,13 @@ declare module '@tanstack/react-router' {
       path: '/pedidos'
       fullPath: '/pedidos'
       preLoaderRoute: typeof PedidosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/os': {
+      id: '/os'
+      path: '/os'
+      fullPath: '/os'
+      preLoaderRoute: typeof OsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/orcamentos': {
@@ -268,6 +371,20 @@ declare module '@tanstack/react-router' {
       path: '/leads'
       fullPath: '/leads'
       preLoaderRoute: typeof LeadsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/financeiro': {
+      id: '/financeiro'
+      path: '/financeiro'
+      fullPath: '/financeiro'
+      preLoaderRoute: typeof FinanceiroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/estoque': {
+      id: '/estoque'
+      path: '/estoque'
+      fullPath: '/estoque'
+      preLoaderRoute: typeof EstoqueRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -305,6 +422,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CatalogoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ativos': {
+      id: '/ativos'
+      path: '/ativos'
+      fullPath: '/ativos'
+      preLoaderRoute: typeof AtivosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -312,12 +436,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/suporte/$id': {
+      id: '/suporte/$id'
+      path: '/$id'
+      fullPath: '/suporte/$id'
+      preLoaderRoute: typeof SuporteIdRouteImport
+      parentRoute: typeof SuporteRoute
+    }
     '/pedidos/$id': {
       id: '/pedidos/$id'
       path: '/$id'
       fullPath: '/pedidos/$id'
       preLoaderRoute: typeof PedidosIdRouteImport
       parentRoute: typeof PedidosRoute
+    }
+    '/os/$id': {
+      id: '/os/$id'
+      path: '/$id'
+      fullPath: '/os/$id'
+      preLoaderRoute: typeof OsIdRouteImport
+      parentRoute: typeof OsRoute
     }
     '/orcamentos/novo': {
       id: '/orcamentos/novo'
@@ -388,6 +526,16 @@ const OrcamentosRouteWithChildren = OrcamentosRoute._addFileChildren(
   OrcamentosRouteChildren,
 )
 
+interface OsRouteChildren {
+  OsIdRoute: typeof OsIdRoute
+}
+
+const OsRouteChildren: OsRouteChildren = {
+  OsIdRoute: OsIdRoute,
+}
+
+const OsRouteWithChildren = OsRoute._addFileChildren(OsRouteChildren)
+
 interface PedidosRouteChildren {
   PedidosIdRoute: typeof PedidosIdRoute
 }
@@ -399,18 +547,34 @@ const PedidosRouteChildren: PedidosRouteChildren = {
 const PedidosRouteWithChildren =
   PedidosRoute._addFileChildren(PedidosRouteChildren)
 
+interface SuporteRouteChildren {
+  SuporteIdRoute: typeof SuporteIdRoute
+}
+
+const SuporteRouteChildren: SuporteRouteChildren = {
+  SuporteIdRoute: SuporteIdRoute,
+}
+
+const SuporteRouteWithChildren =
+  SuporteRoute._addFileChildren(SuporteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AtivosRoute: AtivosRoute,
   CatalogoRoute: CatalogoRoute,
   ClientesRoute: ClientesRouteWithChildren,
   ConfiguracoesRoute: ConfiguracoesRoute,
   ContratosRoute: ContratosRouteWithChildren,
   DashboardRoute: DashboardRoute,
+  EstoqueRoute: EstoqueRoute,
+  FinanceiroRoute: FinanceiroRoute,
   LeadsRoute: LeadsRoute,
   LoginRoute: LoginRoute,
   OrcamentosRoute: OrcamentosRouteWithChildren,
+  OsRoute: OsRouteWithChildren,
   PedidosRoute: PedidosRouteWithChildren,
   PipelineRoute: PipelineRoute,
+  SuporteRoute: SuporteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
