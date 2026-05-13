@@ -31,11 +31,15 @@ export const Route = createFileRoute("/os/$id")({
 
 function OSDetalhe() {
   const { id } = Route.useParams();
-  const { ordens, clientes, ativos, updateOS, toggleTarefa, concluirOS } = useAppStore();
+  const { ordens, clientes, ativos, pedidos, contratos, tickets, updateOS, toggleTarefa, concluirOS } =
+    useAppStore();
   const os = ordens.find((o) => o.id === id);
   if (!os) throw notFound();
   const cli = clientes.find((c) => c.id === os.clienteId);
   const vinculados = ativos.filter((a) => os.ativosIds.includes(a.id));
+  const pedidoRel = os.pedidoId ? pedidos.find((p) => p.id === os.pedidoId) : undefined;
+  const contratoRel = os.contratoId ? contratos.find((c) => c.id === os.contratoId) : undefined;
+  const ticketRel = os.ticketId ? tickets.find((t) => t.id === os.ticketId) : undefined;
   const [novaTarefa, setNovaTarefa] = useState("");
   const [horas, setHoras] = useState(String(os.horasGastas ?? 0));
   const [obs, setObs] = useState(os.observacao ?? "");
@@ -184,6 +188,53 @@ function OSDetalhe() {
                   <span>{formatDate(os.concluidaEm)}</span>
                 </div>
               )}
+            </div>
+          </div>
+          <div>
+            <h2 className="font-semibold mb-2">Vínculos</h2>
+            <div className="space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Pedido</span>
+                {pedidoRel ? (
+                  <Link
+                    to="/pedidos/$id"
+                    params={{ id: pedidoRel.id }}
+                    className="text-primary hover:underline"
+                  >
+                    {pedidoRel.numero}
+                  </Link>
+                ) : (
+                  <span>—</span>
+                )}
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Contrato</span>
+                {contratoRel ? (
+                  <Link
+                    to="/contratos/$id"
+                    params={{ id: contratoRel.id }}
+                    className="text-primary hover:underline"
+                  >
+                    {contratoRel.numero}
+                  </Link>
+                ) : (
+                  <span>—</span>
+                )}
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Ticket</span>
+                {ticketRel ? (
+                  <Link
+                    to="/suporte/$id"
+                    params={{ id: ticketRel.id }}
+                    className="text-primary hover:underline"
+                  >
+                    {ticketRel.numero}
+                  </Link>
+                ) : (
+                  <span>—</span>
+                )}
+              </div>
             </div>
           </div>
           <div>
