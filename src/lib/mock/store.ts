@@ -822,7 +822,7 @@ export const useAppStore = create<State>()(
         set((s) => ({
           pedidos: [pedido, ...s.pedidos],
           orcamentos: s.orcamentos.map((o) =>
-            o.id === id ? { ...o, status: "convertido", pedidoId: pedido.id } : o,
+            o.id === id ? { ...o, pedidoId: pedido.id } : o,
           ),
           lancamentos: [lanc, ...s.lancamentos],
         }));
