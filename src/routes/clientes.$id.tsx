@@ -59,34 +59,34 @@ function ClienteDetalhe() {
     .reduce((a, l) => a + l.valor, 0);
 
   // Timeline: junta tudo ordenado por data desc
-  type Evt = { d: string; label: string; href?: { to: string; params?: Record<string, string> } };
+  type Evt = { d: string; label: string; href?: string };
   const eventos: Evt[] = [
     { d: cliente.criadoEm, label: "Cliente cadastrado" },
     ...opps.map((o) => ({ d: o.criadoEm, label: `Oportunidade: ${o.titulo}` })),
     ...orcs.map((o) => ({
       d: o.criadoEm,
       label: `Orçamento ${o.numero} (${o.status})`,
-      href: { to: "/orcamentos/$id", params: { id: o.id } },
+      href: `/orcamentos/${o.id}`,
     })),
     ...peds.map((p) => ({
       d: p.criadoEm,
       label: `Pedido ${p.numero} (${p.status})`,
-      href: { to: "/pedidos/$id", params: { id: p.id } },
+      href: `/pedidos/${p.id}`,
     })),
     ...ctrs.map((c) => ({
       d: c.criadoEm,
       label: `Contrato ${c.numero}`,
-      href: { to: "/contratos/$id", params: { id: c.id } },
+      href: `/contratos/${c.id}`,
     })),
     ...oss.map((o) => ({
       d: o.criadoEm,
       label: `OS ${o.numero}: ${o.titulo}`,
-      href: { to: "/os/$id", params: { id: o.id } },
+      href: `/os/${o.id}`,
     })),
     ...tks.map((t) => ({
       d: t.criadoEm,
       label: `Ticket ${t.numero}: ${t.assunto}`,
-      href: { to: "/suporte/$id", params: { id: t.id } },
+      href: `/suporte/${t.id}`,
     })),
   ].sort((a, b) => (a.d < b.d ? 1 : -1));
 
@@ -343,9 +343,9 @@ function ClienteDetalhe() {
                   <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full bg-primary" />
                   <p className="text-xs text-muted-foreground">{formatDate(e.d)}</p>
                   {e.href ? (
-                    <Link to={e.href.to} params={e.href.params} className="text-sm hover:text-primary">
+                    <a href={e.href} className="text-sm hover:text-primary">
                       {e.label}
-                    </Link>
+                    </a>
                   ) : (
                     <p className="text-sm">{e.label}</p>
                   )}
