@@ -40,10 +40,11 @@ export const Route = createFileRoute("/estoque")({
   component: EstoquePage,
 });
 
-const ESTOQUE_MIN = 10;
+const ESTOQUE_MIN_DEFAULT = 10;
+const minimoOf = (i: { estoqueMinimo?: number }) => i.estoqueMinimo ?? ESTOQUE_MIN_DEFAULT;
 
 function EstoquePage() {
-  const { catalogo, movimentacoes, ordens, addMovimentacao } = useAppStore();
+  const { catalogo, movimentacoes, ordens, addMovimentacao, updateItemCatalogo } = useAppStore();
   const produtos = catalogo.filter((i) => i.tipo !== "servico");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
@@ -71,7 +72,7 @@ function EstoquePage() {
     setForm({ itemId: "", tipo: "entrada", quantidade: "", motivo: "", osId: "" });
   };
 
-  const criticos = produtos.filter((i) => calcEstoque(i.id, movimentacoes) < ESTOQUE_MIN);
+  const criticos = produtos.filter((i) => calcEstoque(i.id, movimentacoes) < minimoOf(i));
 
   return (
     <PageContainer>
@@ -187,19 +188,31 @@ function EstoquePage() {
                   <TableHead>Item</TableHead>
                   <TableHead>Unidade</TableHead>
                   <TableHead>Saldo</TableHead>
+                  <TableHead>Mínimo</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {produtos.map((p) => {
                   const saldo = calcEstoque(p.id, movimentacoes);
-                  const critico = saldo < ESTOQUE_MIN;
+                  const min = minimoOf(p);
+                  const critico = saldo < min;
                   return (
-                    <TableRow key={p.id}>
+                    <TableRow key={p.id} className={critico ? "bg-destructive/5" : undefined}>
                       <TableCell className="font-mono text-xs">{p.codigo}</TableCell>
                       <TableCell>{p.nome}</TableCell>
                       <TableCell className="text-muted-foreground">{p.unidade}</TableCell>
                       <TableCell className="font-semibold">{saldo}</TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          defaultValue={min}
+                          className="h-7 w-20"
+                          onBlur={(e) =>
+                            updateItemCatalogo(p.id, { estoqueMinimo: Number(e.target.value) })
+                          }
+                        />
+                      </TableCell>
                       <TableCell>
                         {critico ? (
                           <Badge variant="destructive" className="inline-flex items-center gap-1">

@@ -17,11 +17,15 @@ export const Route = createFileRoute("/ativos/$id")({
 
 function AtivoDetalhe() {
   const { id } = Route.useParams();
-  const { ativos, clientes, ordens } = useAppStore();
+  const { ativos, clientes, ordens, tickets, contratos } = useAppStore();
   const a = ativos.find((x) => x.id === id);
   if (!a) throw notFound();
   const cli = clientes.find((c) => c.id === a.clienteId);
   const historico = ordens.filter((o) => o.ativosIds.includes(a.id));
+  const ticketsRel = tickets.filter((t) => historico.some((o) => o.ticketId === t.id));
+  const contratoRel = contratos.find(
+    (c) => c.clienteId === a.clienteId && c.status === "ativo",
+  );
 
   return (
     <PageContainer>
@@ -64,30 +68,92 @@ function AtivoDetalhe() {
             <Info label="Localização" value={a.localizacao ?? "—"} />
             <Info label="Instalado em" value={formatDate(a.instaladoEm)} />
             <Info label="Última leitura" value={formatDate(a.ultimaLeitura)} />
+            <Info
+              label="Contrato vigente"
+              value={
+                contratoRel ? (
+                  <Link
+                    to="/contratos/$id"
+                    params={{ id: contratoRel.id }}
+                    className="text-primary hover:underline"
+                  >
+                    {contratoRel.numero}
+                  </Link>
+                ) : (
+                  "—"
+                )
+              }
+            />
+          </div>
+          <div className="mt-6">
+            <h3 className="text-sm font-semibold mb-2">Linha do tempo</h3>
+            <ol className="relative border-l ml-2 space-y-3">
+              {[
+                a.instaladoEm && { d: a.instaladoEm, label: "Instalado" },
+                ...historico.map((o) => ({
+                  d: o.criadoEm,
+                  label: `OS ${o.numero}: ${o.titulo}`,
+                })),
+                a.ultimaLeitura && { d: a.ultimaLeitura, label: "Última leitura" },
+              ]
+                .filter(Boolean)
+                .sort((x: any, y: any) => (x.d < y.d ? 1 : -1))
+                .map((e: any, i) => (
+                  <li key={i} className="ml-4">
+                    <div className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full bg-primary" />
+                    <p className="text-xs text-muted-foreground">{formatDate(e.d)}</p>
+                    <p className="text-sm">{e.label}</p>
+                  </li>
+                ))}
+            </ol>
           </div>
         </Card>
-        <Card className="p-5">
-          <h2 className="font-semibold mb-3">Histórico de OS</h2>
-          <div className="space-y-2 text-sm">
-            {historico.slice(0, 8).map((o) => (
-              <Link
-                key={o.id}
-                to="/os/$id"
-                params={{ id: o.id }}
-                className="block rounded-md border p-3 hover:bg-muted"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">{o.numero}</span>
-                  <Badge variant="outline">{o.status}</Badge>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">{o.titulo}</p>
-              </Link>
-            ))}
-            {!historico.length && (
-              <p className="text-sm text-muted-foreground">Nenhuma OS vinculada.</p>
-            )}
-          </div>
-        </Card>
+        <div className="space-y-4">
+          <Card className="p-5">
+            <h2 className="font-semibold mb-3">Histórico de OS</h2>
+            <div className="space-y-2 text-sm">
+              {historico.slice(0, 8).map((o) => (
+                <Link
+                  key={o.id}
+                  to="/os/$id"
+                  params={{ id: o.id }}
+                  className="block rounded-md border p-3 hover:bg-muted"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{o.numero}</span>
+                    <Badge variant="outline">{o.status}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{o.titulo}</p>
+                </Link>
+              ))}
+              {!historico.length && (
+                <p className="text-sm text-muted-foreground">Nenhuma OS vinculada.</p>
+              )}
+            </div>
+          </Card>
+          <Card className="p-5">
+            <h2 className="font-semibold mb-3">Tickets relacionados</h2>
+            <div className="space-y-2 text-sm">
+              {ticketsRel.slice(0, 8).map((t) => (
+                <Link
+                  key={t.id}
+                  to="/suporte/$id"
+                  params={{ id: t.id }}
+                  className="block rounded-md border p-3 hover:bg-muted"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{t.numero}</span>
+                    <Badge variant="outline">{t.status}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{t.assunto}</p>
+                </Link>
+              ))}
+              {!ticketsRel.length && (
+                <p className="text-sm text-muted-foreground">Sem tickets vinculados.</p>
+              )}
+            </div>
+          </Card>
+        </div>
       </div>
     </PageContainer>
   );

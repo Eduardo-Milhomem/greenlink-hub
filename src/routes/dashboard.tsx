@@ -100,7 +100,7 @@ function Dashboard() {
     (t) => t.status !== "resolvido" && (t.prioridade === "alta" || t.prioridade === "critica"),
   ).length;
   const estoqueCritico = catalogo.filter(
-    (i) => i.tipo !== "servico" && calcEstoque(i.id, movimentacoes) < 10,
+    (i) => i.tipo !== "servico" && calcEstoque(i.id, movimentacoes) < (i.estoqueMinimo ?? 10),
   );
 
   const funilCounts = ESTAGIOS.map((e) => ({
@@ -117,25 +117,25 @@ function Dashboard() {
         <Kpi
           label="Leads novos"
           value={String(leadsNovos)}
-          hint={`${leads.length} no total`}
+          hint={`hoje · ${leads.length} no total`}
           icon={Users}
         />
         <Kpi
           label="Oportunidades abertas"
           value={String(oppAbertas.length)}
-          hint={formatBRL(oppAbertas.reduce((a, o) => a + o.valor, 0))}
+          hint={`em aberto · ${formatBRL(oppAbertas.reduce((a, o) => a + o.valor, 0))}`}
           icon={Target}
         />
         <Kpi
           label="Orçamentos pendentes"
           value={String(orcPendentes.length)}
-          hint={`${orcamentos.length} no total`}
+          hint={`a aprovar · ${orcamentos.length} no total`}
           icon={FileText}
         />
         <Kpi
           label="Ticket médio (aberto)"
           value={formatBRL(ticketMedio)}
-          hint={`Receita ganha: ${formatBRL(totalGanho)}`}
+          hint={`Ganho acumulado: ${formatBRL(totalGanho)}`}
           icon={TrendingUp}
           accent="bg-success/10 text-success"
         />
@@ -145,27 +145,28 @@ function Dashboard() {
         <Kpi
           label="OS abertas"
           value={String(osAbertas.length)}
-          hint={`${ordens.length} no total`}
+          hint={`agora · ${ordens.length} no total`}
           icon={Wrench}
           accent="bg-warning/15 text-warning-foreground"
         />
         <Kpi
           label="A receber 30d"
           value={formatBRL(aReceber30)}
+          hint="próximos 30 dias"
           icon={Wallet}
           accent="bg-success/10 text-success"
         />
         <Kpi
           label="Tickets críticos"
           value={String(ticketsCriticos)}
-          hint={`${tickets.length} tickets`}
+          hint={`abertos · ${tickets.length} no total`}
           icon={LifeBuoy}
           accent="bg-destructive/10 text-destructive"
         />
         <Kpi
           label="Estoque crítico"
           value={String(estoqueCritico.length)}
-          hint="itens abaixo do mínimo"
+          hint="itens abaixo do mínimo agora"
           icon={Boxes}
         />
       </div>
