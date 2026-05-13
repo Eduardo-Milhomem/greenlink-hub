@@ -200,13 +200,25 @@ export interface Ativo {
 }
 
 // ---------- Ordens de Serviço ----------
-export type OSStatus = "aberta" | "em_execucao" | "concluida" | "cancelada";
+export type OSStatus =
+  | "aberta"
+  | "agendada"
+  | "em_rota"
+  | "em_execucao"
+  | "aguardando_pecas"
+  | "concluida"
+  | "cancelada"
+  | "retorno_necessario";
 export type OSPrioridade = "baixa" | "media" | "alta" | "critica";
 export const OS_STATUS: { id: OSStatus; label: string }[] = [
   { id: "aberta", label: "Aberta" },
+  { id: "agendada", label: "Agendada" },
+  { id: "em_rota", label: "Em rota" },
   { id: "em_execucao", label: "Em execução" },
+  { id: "aguardando_pecas", label: "Aguardando peças" },
   { id: "concluida", label: "Concluída" },
   { id: "cancelada", label: "Cancelada" },
+  { id: "retorno_necessario", label: "Retorno necessário" },
 ];
 export interface OSTarefa {
   id: ID;
