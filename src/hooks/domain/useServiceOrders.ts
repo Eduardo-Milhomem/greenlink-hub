@@ -19,8 +19,21 @@ export const useServiceOrder = (id?: string) => {
 export const useFinishServiceOrder = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: services.serviceOrders.finish,
+    mutationFn: (id: string) =>
+      services.serviceOrders.update(id, { status: "done" }),
     onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ["serviceOrders"] });
+      queryClient.invalidateQueries({ queryKey: ["serviceOrders", id] });
+    },
+  });
+};
+
+export const useUpdateServiceOrder = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Parameters<typeof services.serviceOrders.update>[1] }) =>
+      services.serviceOrders.update(id, data),
+    onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["serviceOrders"] });
       queryClient.invalidateQueries({ queryKey: ["serviceOrders", id] });
     },

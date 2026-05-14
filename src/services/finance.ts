@@ -103,9 +103,9 @@ export const financeService = {
     receive(id, amount);
   },
 
-  pay: async (id: string, amount: number) => {
+  pay: async (id: string, _amount: number) => {
     const pay = useAppStore.getState().pagarLancamento;
-    pay(id, amount);
+    pay(id);
   },
 
   remove: async (id: string) => {

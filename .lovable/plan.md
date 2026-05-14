@@ -1,108 +1,98 @@
 ## Contexto
 
-Os 3 arquivos enviados (prompts oficiais, OpenAPI e Prisma schema) definem o padrão real do GreenLink ADM. O frontend atual já tem as telas, mas usa modelos simplificados (`Orcamento`, `Pedido`, `OS` em PT, sem separação clara entre `Lead/Opportunity`, `Quote/Order`, `Order/Contract`, `Catalog/Stock/Asset`) e depende totalmente de `localStorage` como fonte primária. Esta etapa alinha o projeto ao padrão definitivo, **preservando o layout e identidade visual atuais**.
+A análise crítica é clara: o app já tem identidade visual e taxonomia corretas, mas opera sobre `localStorage` (`greenlink-adm-v3`), com várias telas em loading infinito e sem auth. Antes de qualquer nova feature, é preciso resolver a **coluna vertebral**: dados reais, auth, e estados padronizados (loading/vazio/erro/sucesso).
 
-Vou seguir a sequência reduzida recomendada pelo próprio PRD (Prompts 1, 2, 4, 5, 6, 7) + Prompt 14 (camada de serviços) que é pré-requisito de tudo.
+Esta é a **Etapa 1 da Opção A** ("infraestrutura real de dados e auth"). As próximas (fluxo comercial, contrato/ativo/OS, financeiro, suporte, dashboard executivo) virão em sprints seguintes, sobre a base que esta sprint instala.
 
-## Etapa A — Arquitetura de tipos e serviços (Prompts 1, 2, 14)
+## Objetivo da Sprint 1
 
-Criar a base que o restante consome:
+Substituir o mock store por persistência real no Supabase (via Lovable Cloud), com autenticação obrigatória, sem reescrever a UI. A camada `services/` + `hooks/domain/` já existente continua sendo o contrato — só a implementação por dentro muda.
 
-```text
-src/
-  types/
-    common.ts        (ID, Status enums compartilhados)
-    customer.ts      Customer, Contact, Address
-    lead.ts          Lead, LeadStatus
-    opportunity.ts   Opportunity, OpportunityStage
-    catalog.ts       CatalogItem, CatalogItemType
-    quote.ts         Quote, QuoteItem, QuoteStatus
-    order.ts         CustomerOrder, OrderStatus
-    contract.ts      Contract, ContractItem, ContractType, BillingFrequency
-    asset.ts         Asset, AssetStatus, AssetOwnerType
-    serviceOrder.ts  ServiceOrder, ServiceOrderTask, ServiceStatus
-    ticket.ts        SupportTicket, TicketMessage, TicketStatus
-    inventory.ts     StockBalance, StockMovement, StockMovementType
-    finance.ts       Receivable, Payable, FinanceStatus
-  services/
-    http.ts          fetch wrapper (placeholder p/ baseURL futura)
-    mock/            seeds + repositórios em memória persistidos
-    customers.ts ... (1 service por domínio listado acima)
-  hooks/
-    useCustomers.ts ... (TanStack Query wrappers por domínio)
-```
+## Escopo
 
-Regras:
+### 1. Habilitar Lovable Cloud
 
-- Componentes de UI **não** chamam `useAppStore` direto; consomem hooks por domínio.
-- Hoje os services delegam ao mock store; trocar mock por API real será só editar `services/*`.
-- Nomenclatura em **inglês** nos types/services (alinhado ao OpenAPI/Prisma); UI continua em PT-BR.
-- Migrar gradualmente: criar a nova camada em paralelo; trocar imports tela a tela; deletar o store antigo no final da etapa.
+Provisiona Supabase gerenciado (Postgres + Auth + Storage). Sem mencionar Supabase ao usuário final; tratar como "Lovable Cloud".
 
-## Etapa B — Correção semântica (Prompt 2)
+### 2. Schema inicial no Postgres (migrations)
 
-Renomeações nas telas/labels/badges/rotas:
+Criar tabelas alinhadas aos `src/types/*` já em inglês. Sprint 1 cobre apenas o núcleo necessário para destravar Sprint 2:
 
-- `Orçamento` permanece como label PT, mas tipo passa a ser `Quote` com status `draft | sent | approved | rejected | expired | cancelled` (não mais `convertido`).
-- `Pedido` = `CustomerOrder` com status `open | approved | invoiced | partially_fulfilled | fulfilled | cancelled`.
-- `Contrato` ganha `type` e `billingFrequency` (hoje só tem `valorMensal` + `indexador`).
-- Financeiro: `Lancamento` é separado em `Receivable` e `Payable`. Botão de Contas a Receber passa de "Pagar" → **"Registrar recebimento"**; Contas a Pagar mantém "Pagar".
-- `Ativo` deixa de aparecer como saldo de estoque; estoque usa `StockBalance` por item de catálogo.
-- Rota `/os/$id` ganha vínculo com `ticketId` e `contractId` (já existe `pedidoId`).
+- `profiles` (1:1 com `auth.users`, `full_name`, `avatar_url`)
+- `user_roles` (enum `app_role: admin | manager | operator | viewer`) + função `has_role()` SECURITY DEFINER
+- `customers` (+ `customer_contacts`, `customer_addresses`)
+- `leads`
+- `catalog_items`
+- `opportunities`
+- `quotes` (+ `quote_items`)
+- `customer_orders` (+ `order_items`)
+- `contracts` (+ `contract_items`) — estrutura, sem motor de recorrência ainda
+- `assets`
+- `service_orders`
+- `support_tickets`
+- `stock_movements`, `stock_balances`
+- `receivables`, `payables`
 
-## Etapa C — Quote (Prompt 4)
+Todas com `id uuid pk`, `created_at`, `updated_at`, trigger `update_updated_at`. RLS habilitado em todas. Políticas iniciais: usuários autenticados leem; mutações exigem role `admin` ou `manager` via `has_role(auth.uid(), ...)`. Refinamento de policies por owner vem na Sprint 2.
 
-- Status novo: `draft | sent | approved | rejected | expired | cancelled` (substitui `convertido`).
-- Snapshot dos itens: ao adicionar item do catálogo, copiar `description`, `type`, `unit` no item da quote (já parcialmente feito).
-- Ações no detalhe: **Enviar**, **Aprovar**, **Rejeitar**, **Gerar pedido** (visível só se `approved`).
-- Validação: aprovação exige cliente + ≥1 item.
+Trigger `handle_new_user` cria `profiles` row + atribui role `viewer` no primeiro signup (primeiro usuário pode ser promovido a admin via SQL).
 
-## Etapa D — CustomerOrder (Prompt 5)
+### 3. Autenticação
 
-- Entidade própria: número `PED-…`, status `open | approved | invoiced | partially_fulfilled | fulfilled | cancelled`.
-- Mantém `quoteId` de origem; copia itens aprovados (snapshot).
-- Detalhe ganha: ações de status, link para quote de origem, link para criar Contrato/OS.
-- Diferenciação visual de Quote: badge azul (Quote) vs verde (Order); ícone próprio.
+- Rota `/login` real (já existe arquivo) com email/senha + Google (broker Lovable).
+- Rota `/signup` (ou aba no login).
+- Layout pathless `_authenticated` envolvendo todas as rotas operacionais; `beforeLoad` redireciona para `/login` se sem sessão.
+- `__root.tsx` registra `onAuthStateChange` que invalida o `queryClient`.
+- `AuthProvider` expõe `user`, `profile`, `roles`, `hasRole()` via contexto do router.
+- Logout no header.
 
-## Etapa E — Contract (Prompt 6)
+### 4. Camada de serviços real
 
-- Adicionar campos: `type` (sale_installation | rental | subscription | support | mixed), `billingFrequency` (one_time | monthly | quarterly | semiannual | annual), `items[]` (snapshot do que está sob contrato).
-- Vínculo opcional com `orderId` e com `assetIds[]`.
-- Geração de Receivables respeita `billingFrequency` (hoje gera 12 meses fixos).
-- Listagem mostra "próximo reajuste" (já planejado, ainda pendente).
+Substituir cada arquivo em `src/services/*.ts` para usar `supabase` (browser client) em vez de `useAppStore`. Os hooks em `src/hooks/domain/*` não mudam (já usam TanStack Query). Sem `createServerFn` nesta sprint — queries respeitam RLS direto do client é suficiente e mais simples.
 
-## Etapa F — Finance (Prompt 7)
+`src/services/http.ts` é removido (não usado).
 
-- Separar `Lancamento` em `Receivable` (origem: contract|order|manual, sempre liga a customer) e `Payable` (fornecedor textual).
-- Status: `open | partial | paid | overdue | cancelled` (adiciona `partial`, remove `vencido` — derivar `overdue` do vencimento).
-- Aba "Contas a Receber": botão **"Registrar recebimento"** abre dialog com data + valor.
-- Aba "Contas a Pagar": botão **"Pagar"**.
-- KPIs revistos com período explícito ("a receber 30 dias", "vencidos hoje", etc.).
-- Fluxo de caixa lê de ambos.
+### 5. Padronização de estados de tela
 
-## Etapa G — Dashboard alinhado (Prompt 13, leve)
+Criar 3 componentes reutilizáveis em `src/components/feedback/`:
+- `<LoadingState />` (skeleton consistente por tipo de view)
+- `<EmptyState icon title description action />`
+- `<ErrorState error onRetry />`
 
-Apenas reconectar os widgets aos novos hooks/types e adicionar período visível em cada card. Sem redesenho.
+Aplicar nas rotas que hoje ficam em loading infinito: `/dashboard`, `/leads`, `/clientes`, `/orcamentos`, `/pedidos`, `/contratos`, `/suporte`. Cada `useQuery` passa por `isLoading → isError → data?.length === 0 → conteúdo`.
 
-## Detalhes técnicos
+### 6. Seed mínimo
 
-- Persistência: nova chave `greenlink-adm-v3` (migração: descartar v2, gerar seeds novos coerentes com os novos enums).
-- TanStack Query já estava no projeto via shadcn? Se não, instalar `@tanstack/react-query` + `QueryClientProvider` em `__root.tsx`. Hooks usam `queryKey` por domínio; mutations invalidam.
-- Validação: `react-hook-form` + `zod` (já presentes) — schemas movidos para `src/types/<domain>.ts` ao lado dos types.
-- Mantenho i18n PT-BR em todos os labels/UI; só types/services/enums vão em inglês.
-- Reference docs salvos em `.lovable/reference/` para consulta futura (prompts, OpenAPI, Prisma).
+Migration de seed com 3 customers, 5 catalog_items, 2 leads, 1 quote, 1 order de exemplo (apenas para o primeiro admin ter algo na tela). Idempotente via `ON CONFLICT DO NOTHING`.
 
-## Fora de escopo nesta etapa
+### 7. Limpeza
 
-- Backend real / Lovable Cloud (a camada de services fica pronta para plugar depois).
-- Cliente 360 completo (Prompt 8), Asset detail completo (Prompt 9), profundidade extra de OS/Ticket (10/11), Estoque (12) — entram numa próxima fase, depois que o coração transacional (Quote→Order→Contract→Receivable) estiver consistente.
-- Auth/RBAC, multi-tenant, NF-e, Stripe.
+- Remover `src/lib/mock/store.ts`, `src/lib/mock/types.ts`, persistência `greenlink-adm-v3` do localStorage.
+- Tela `/configuracoes` deixa de mostrar aviso de "dados em localStorage"; passa a expor: perfil do usuário, troca de senha, lista de usuários (admin only) com atribuição de roles.
+
+## Fora de escopo (próximas sprints)
+
+- Motor de recorrência de contratos → Sprint 3
+- Conversão lead→cliente→orçamento→pedido com workflow visual completo → Sprint 2
+- OS/ativos/estoque com movimento real → Sprint 3
+- Dashboard executivo com queries agregadas → Sprint 4
+- SLA de suporte, automações, notificações, portal do cliente → backlog futuro
+- Edge functions / server-side webhooks → quando aparecer integração externa
 
 ## Critérios de aceitação
 
-- Todas as rotas existentes continuam navegáveis com o mesmo visual.
-- Nenhuma chamada direta a `useAppStore` em componentes de página — tudo via hooks de domínio.
-- Quote aprovada gera Order via botão dedicado; Order não compartilha número/visual com Quote.
-- Contas a Receber não exibe mais o botão "Pagar".
-- Seeds demonstram: lead → opportunity → quote (approved) → order → contract → 3 receivables (1 paid, 1 open, 1 overdue).
-- Build verde; testes existentes (`src/lib/search.test.ts`) atualizados se necessário.
+- Lovable Cloud habilitado; tabelas criadas; RLS ativo em todas; `has_role()` funcional.
+- App não funciona sem login; logout retorna a `/login`.
+- Recarregar o navegador mantém a sessão e os dados (não há mais `greenlink-adm-v3` em uso).
+- Nenhuma rota fica em loading infinito: cada uma resolve para uma das 4 telas (loading/vazio/erro/sucesso) com componentes reutilizáveis.
+- Criar um lead, customer, item de catálogo via UI persiste no Postgres e aparece em outro navegador após login.
+- Build verde; testes existentes em `src/lib/search.test.ts` ajustados.
+
+## Detalhes técnicos
+
+- Cliente Supabase: usar `@/integrations/supabase/client` em services. Service-role só se uma operação realmente exigir (não nesta sprint).
+- Tipos do Postgres gerados em `src/integrations/supabase/types.ts` (auto pelo Lovable Cloud). Mapeamento PT↔EN fica nos services, igual ao padrão atual de `customerService`.
+- Roles **nunca** ficam em `profiles` — sempre em `user_roles` (regra de segurança crítica).
+- `has_role()` é `SECURITY DEFINER` com `search_path = public` para evitar recursão de RLS.
+- Migrations versionadas em `supabase/migrations/<timestamp>_*.sql`.
+- Após habilitar Cloud, primeiro usuário criado precisa ser promovido a `admin` via SQL manual (documentado no README).

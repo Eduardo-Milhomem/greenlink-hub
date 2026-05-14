@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { services } from "@/services";
-import { Opportunity } from "@/types/opportunity";
+import { Opportunity, OpportunityStage } from "@/types/opportunity";
 
 export const useOpportunities = () => {
   return useQuery({
@@ -33,7 +33,7 @@ export const useUpdateOpportunity = () => {
 export const useMoveOpportunity = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, stage }: { id: string; stage: string }) =>
+    mutationFn: ({ id, stage }: { id: string; stage: OpportunityStage }) =>
       services.opportunities.move(id, stage),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });

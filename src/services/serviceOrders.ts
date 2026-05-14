@@ -75,7 +75,6 @@ export const serviceOrderService = {
   create: async (data: Partial<ServiceOrder>) => {
     const addOS = useAppStore.getState().addOS;
     addOS({
-      numero: data.osNumber!,
       titulo: data.description!,
       clienteId: data.customerId!,
       prioridade: data.priority ? domainToOsPrioridade[data.priority] : "media",

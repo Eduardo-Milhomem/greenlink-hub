@@ -93,7 +93,6 @@ export const contractService = {
   create: async (data: Partial<Contract>) => {
     const addContrato = useAppStore.getState().addContrato;
     addContrato({
-      numero: data.contractNumber!,
       clienteId: data.customerId!,
       pedidoId: data.orderId,
       inicio: data.startDate!,

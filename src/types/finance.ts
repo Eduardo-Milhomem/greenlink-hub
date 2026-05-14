@@ -1,4 +1,5 @@
-import { ID, BillingStatus } from "./contract";
+import { ID } from "./common";
+import { BillingStatus } from "./contract";
 
 export type FinancialCategoryType = "revenue" | "expense";
 

@@ -71,7 +71,6 @@ export const ticketService = {
   create: async (data: Partial<SupportTicket>) => {
     const addTicket = useAppStore.getState().addTicket;
     addTicket({
-      numero: data.ticketNumber!,
       assunto: data.subject!,
       clienteId: data.customerId!,
       canal: isTicketCanal(data.channel) ? data.channel : "portal",
@@ -96,7 +95,7 @@ export const ticketService = {
 
   addMessage: async (ticketId: string, author: string, text: string, internal: boolean = false) => {
     const addMessage = useAppStore.getState().addMensagemTicket;
-    addMessage(ticketId, author, text, internal);
+    addMessage(ticketId, { autor: author, texto: text, interno: internal });
   },
 
   toServiceOrder: async (ticketId: string) => {

@@ -69,8 +69,8 @@ export const leadService = {
     removeLead(id);
   },
 
-  convert: async (id: string, customerId?: string) => {
+  convert: async (id: string, _customerId?: string) => {
     const convertLead = useAppStore.getState().converterLead;
-    convertLead(id, customerId);
+    convertLead(id);
   },
 };

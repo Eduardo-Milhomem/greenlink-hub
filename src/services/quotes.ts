@@ -59,7 +59,6 @@ export const quoteService = {
   create: async (data: Partial<Quote>) => {
     const addOrcamento = useAppStore.getState().addOrcamento;
     addOrcamento({
-      numero: data.quoteNumber!,
       clienteId: data.customerId!,
       oportunidadeId: data.opportunityId,
       itens: [],
