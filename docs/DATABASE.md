@@ -4,16 +4,16 @@ Banco PostgreSQL gerenciado via Lovable Cloud (Supabase). 22 tabelas com RLS ati
 
 ## Domínios
 
-| Domínio | Tabelas |
-|---|---|
-| Identidade & RBAC | `profiles`, `user_roles` (enum `app_role`: admin, manager, operator, viewer) |
-| CRM | `customers`, `customer_contacts`, `customer_addresses`, `leads`, `opportunities` |
-| Comercial | `catalog_items`, `quotes`, `quote_items`, `customer_orders`, `order_items` |
-| Contratos | `contracts`, `contract_items` |
-| Operação | `assets`, `service_orders`, `service_order_tasks` |
-| Suporte | `support_tickets`, `ticket_messages` |
-| Estoque | `stock_balances` (PK warehouse+item), `stock_movements` |
-| Financeiro | `receivables`, `payables` |
+| Domínio           | Tabelas                                                                          |
+| ----------------- | -------------------------------------------------------------------------------- |
+| Identidade & RBAC | `profiles`, `user_roles` (enum `app_role`: admin, manager, operator, viewer)     |
+| CRM               | `customers`, `customer_contacts`, `customer_addresses`, `leads`, `opportunities` |
+| Comercial         | `catalog_items`, `quotes`, `quote_items`, `customer_orders`, `order_items`       |
+| Contratos         | `contracts`, `contract_items`                                                    |
+| Operação          | `assets`, `service_orders`, `service_order_tasks`                                |
+| Suporte           | `support_tickets`, `ticket_messages`                                             |
+| Estoque           | `stock_balances` (PK warehouse+item), `stock_movements`                          |
+| Financeiro        | `receivables`, `payables`                                                        |
 
 ## Integridade referencial
 

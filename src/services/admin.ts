@@ -15,10 +15,11 @@ export type AdminUser = {
 
 export const adminService = {
   listUsers: async (): Promise<AdminUser[]> => {
-    const [{ data: profiles, error: profileError }, { data: roles, error: roleError }] = await Promise.all([
-      supabase.from("profiles").select("*").order("created_at", { ascending: false }),
-      supabase.from("user_roles").select("*"),
-    ]);
+    const [{ data: profiles, error: profileError }, { data: roles, error: roleError }] =
+      await Promise.all([
+        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+        supabase.from("user_roles").select("*"),
+      ]);
     if (profileError) throw profileError;
     if (roleError) throw roleError;
 
@@ -39,13 +40,18 @@ export const adminService = {
   },
 
   addRole: async (userId: string, role: AppRole) => {
-    const { error } = await supabase.from("user_roles").upsert({ user_id: userId, role }, { onConflict: "user_id,role" });
+    const { error } = await supabase
+      .from("user_roles")
+      .upsert({ user_id: userId, role }, { onConflict: "user_id,role" });
     if (error) throw error;
   },
 
   removeRole: async (userId: string, role: AppRole) => {
-    const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", role);
+    const { error } = await supabase
+      .from("user_roles")
+      .delete()
+      .eq("user_id", userId)
+      .eq("role", role);
     if (error) throw error;
   },
 };
-

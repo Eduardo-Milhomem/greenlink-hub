@@ -33,14 +33,21 @@ const mapBalance = (row: StockBalanceRow): StockBalance => ({
 
 export const inventoryService = {
   listMovements: async (): Promise<StockMovement[]> => {
-    const { data, error } = await supabase.from("stock_movements").select("*").order("occurred_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("stock_movements")
+      .select("*")
+      .order("occurred_at", { ascending: false });
     if (error) throw error;
     return (data ?? []).map(mapMovement);
   },
 
   addMovement: async (data: Partial<StockMovement>) => {
     const payload: StockMovementInsert = {
-      movement_type: (data.movementType ?? "adjustment") as any,
+      movement_type: (data.movementType ?? "adjustment") as
+        | "in"
+        | "out"
+        | "transfer"
+        | "adjustment",
       catalog_item_id: data.catalogItemId!,
       source_warehouse_id: data.sourceWarehouseId ?? null,
       target_warehouse_id: data.targetWarehouseId ?? null,
@@ -52,7 +59,11 @@ export const inventoryService = {
       created_by: data.createdBy ?? null,
     };
 
-    const { data: created, error } = await supabase.from("stock_movements").insert(payload).select().single();
+    const { data: created, error } = await supabase
+      .from("stock_movements")
+      .insert(payload)
+      .select()
+      .single();
     if (error) throw error;
 
     const warehouseId = data.targetWarehouseId || data.sourceWarehouseId || DEFAULT_WAREHOUSE;
@@ -67,7 +78,10 @@ export const inventoryService = {
   },
 
   listBalances: async (): Promise<StockBalance[]> => {
-    const { data, error } = await supabase.from("stock_balances").select("*").order("catalog_item_id");
+    const { data, error } = await supabase
+      .from("stock_balances")
+      .select("*")
+      .order("catalog_item_id");
     if (error) throw error;
     return (data ?? []).map(mapBalance);
   },
@@ -130,7 +144,9 @@ export const inventoryService = {
       minimum_stock: base.minimumStock,
     };
 
-    const { error } = await supabase.from("stock_balances").upsert(payload, { onConflict: "warehouse_id,catalog_item_id" });
+    const { error } = await supabase
+      .from("stock_balances")
+      .upsert(payload, { onConflict: "warehouse_id,catalog_item_id" });
     if (error) throw error;
   },
 };

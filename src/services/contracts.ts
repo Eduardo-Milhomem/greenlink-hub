@@ -8,6 +8,8 @@ type ContractUpdate = Database["public"]["Tables"]["contracts"]["Update"];
 type ContractItemRow = Database["public"]["Tables"]["contract_items"]["Row"];
 type ContractItemInsert = Database["public"]["Tables"]["contract_items"]["Insert"];
 
+type ContractWithRelations = ContractRow & { contract_items?: ContractItemRow[] | null };
+
 const mapContractItem = (row: ContractItemRow): ContractItem => ({
   id: row.id,
   contractId: row.contract_id,
@@ -21,9 +23,7 @@ const mapContractItem = (row: ContractItemRow): ContractItem => ({
   isRecurring: !!row.is_recurring,
 });
 
-const mapContract = (
-  row: ContractRow & { contract_items?: ContractItemRow[] | null },
-): Contract => ({
+const mapContract = (row: ContractWithRelations): Contract => ({
   id: row.id,
   contractNumber: row.contract_number,
   customerId: row.customer_id,
@@ -62,20 +62,20 @@ export const contractService = {
   list: async (): Promise<Contract[]> => {
     const { data, error } = await supabase
       .from("contracts")
-      .select("*, contract_items(*)")
+      .select("*, contract_items!fk_ci_contract(*)")
       .order("updated_at", { ascending: false });
     if (error) throw error;
-    return (data ?? []).map((row) => mapContract(row as any));
+    return (data ?? []).map((row) => mapContract(row as unknown as ContractWithRelations));
   },
 
   get: async (id: string): Promise<Contract | undefined> => {
     const { data, error } = await supabase
       .from("contracts")
-      .select("*, contract_items(*)")
+      .select("*, contract_items!fk_ci_contract(*)")
       .eq("id", id)
       .maybeSingle();
     if (error) throw error;
-    return data ? mapContract(data as any) : undefined;
+    return data ? mapContract(data as unknown as ContractWithRelations) : undefined;
   },
 
   create: async (data: Partial<Contract>) => {
@@ -95,10 +95,10 @@ export const contractService = {
         auto_renew: data.autoRenew ?? false,
         notes: data.notes ?? null,
       })
-      .select("*, contract_items(*)")
+      .select("*, contract_items!fk_ci_contract(*)")
       .single();
     if (error) throw error;
-    return mapContract(created as any);
+    return mapContract(created as unknown as ContractWithRelations);
   },
 
   update: async (id: string, data: Partial<Contract>) => {
@@ -106,10 +106,10 @@ export const contractService = {
       .from("contracts")
       .update(buildContractPayload(data))
       .eq("id", id)
-      .select("*, contract_items(*)")
+      .select("*, contract_items!fk_ci_contract(*)")
       .single();
     if (error) throw error;
-    return mapContract(updated as any);
+    return mapContract(updated as unknown as ContractWithRelations);
   },
 
   remove: async (id: string) => {
@@ -118,7 +118,11 @@ export const contractService = {
   },
 
   bill: async (id: string) => {
-    const { data: contract, error } = await supabase.from("contracts").select("*").eq("id", id).single();
+    const { data: contract, error } = await supabase
+      .from("contracts")
+      .select("*")
+      .eq("id", id)
+      .single();
     if (error) throw error;
 
     const due = new Date();
@@ -167,7 +171,10 @@ export const contractService = {
   },
 
   listItems: async (contractId: string): Promise<ContractItem[]> => {
-    const { data, error } = await supabase.from("contract_items").select("*").eq("contract_id", contractId);
+    const { data, error } = await supabase
+      .from("contract_items")
+      .select("*")
+      .eq("contract_id", contractId);
     if (error) throw error;
     return (data ?? []).map(mapContractItem);
   },

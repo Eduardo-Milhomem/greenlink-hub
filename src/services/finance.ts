@@ -8,7 +8,10 @@ type ReceivableInsert = Database["public"]["Tables"]["receivables"]["Insert"];
 type PayableRow = Database["public"]["Tables"]["payables"]["Row"];
 type PayableInsert = Database["public"]["Tables"]["payables"]["Insert"];
 
-const toBillingStatus = (status: Exclude<BillingStatus, "overdue">, dueDateIso: string): BillingStatus => {
+const toBillingStatus = (
+  status: Exclude<BillingStatus, "overdue">,
+  dueDateIso: string,
+): BillingStatus => {
   const base = status;
   const isOpen = base === "open" || base === "partial";
   const isOverdue = isOpen && new Date(dueDateIso).getTime() < Date.now();
@@ -70,15 +73,24 @@ export const financeService = {
       order_id: data.orderId ?? null,
       category_id: data.categoryId ?? null,
       cost_center_id: data.costCenterId ?? null,
-      issue_date: (data.issueDate ?? new Date().toISOString().slice(0, 10)) as any,
-      due_date: data.dueDate as any,
+      issue_date: (data.issueDate ?? new Date().toISOString().slice(0, 10)) as string,
+      due_date: data.dueDate as string,
       amount: data.amount!,
       open_amount: data.openAmount ?? data.amount!,
-      status: data.status === "overdue" ? "open" : ((data.status ?? "open") as any),
+      status: (data.status === "overdue" ? "open" : (data.status ?? "open")) as
+        | "open"
+        | "partial"
+        | "paid"
+        | "overdue"
+        | "cancelled",
       origin_type: data.originType ?? null,
       origin_id: data.originId ?? null,
     };
-    const { data: created, error } = await supabase.from("receivables").insert(payload).select().single();
+    const { data: created, error } = await supabase
+      .from("receivables")
+      .insert(payload)
+      .select()
+      .single();
     if (error) throw error;
     return mapReceivable(created);
   },
@@ -89,19 +101,32 @@ export const financeService = {
       supplier_id: data.supplierId ?? null,
       category_id: data.categoryId ?? null,
       cost_center_id: data.costCenterId ?? null,
-      issue_date: (data.issueDate ?? new Date().toISOString().slice(0, 10)) as any,
-      due_date: data.dueDate as any,
+      issue_date: (data.issueDate ?? new Date().toISOString().slice(0, 10)) as string,
+      due_date: data.dueDate as string,
       amount: data.amount!,
       open_amount: data.openAmount ?? data.amount!,
-      status: data.status === "overdue" ? "open" : ((data.status ?? "open") as any),
+      status: (data.status === "overdue" ? "open" : (data.status ?? "open")) as
+        | "open"
+        | "partial"
+        | "paid"
+        | "overdue"
+        | "cancelled",
     };
-    const { data: created, error } = await supabase.from("payables").insert(payload).select().single();
+    const { data: created, error } = await supabase
+      .from("payables")
+      .insert(payload)
+      .select()
+      .single();
     if (error) throw error;
     return mapPayable(created);
   },
 
   receive: async (id: string, amount: number) => {
-    const { data: row, error: loadError } = await supabase.from("receivables").select("*").eq("id", id).single();
+    const { data: row, error: loadError } = await supabase
+      .from("receivables")
+      .select("*")
+      .eq("id", id)
+      .single();
     if (loadError) throw loadError;
 
     const nextOpen = Math.max(0, Number(row.open_amount) - amount);
@@ -117,7 +142,11 @@ export const financeService = {
   },
 
   pay: async (id: string, _amount: number) => {
-    const { data: row, error: loadError } = await supabase.from("payables").select("*").eq("id", id).single();
+    const { data: row, error: loadError } = await supabase
+      .from("payables")
+      .select("*")
+      .eq("id", id)
+      .single();
     if (loadError) throw loadError;
 
     const nextOpen = 0;

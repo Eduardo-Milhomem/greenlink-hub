@@ -9,4 +9,3 @@ export const formatDate = (iso?: string) => {
   const yyyy = d.getUTCFullYear();
   return `${dd}/${mm}/${yyyy}`;
 };
-

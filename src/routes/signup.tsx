@@ -41,17 +41,33 @@ function SignupPage() {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="email">E-mail</Label>
-            <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input
+              id="email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="senha">Senha</Label>
-            <Input id="senha" type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
+            <Input
+              id="senha"
+              type="password"
+              required
+              minLength={8}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </div>
           <Button type="submit" className="w-full" disabled={submitting}>
             {submitting ? "Criando…" : "Criar conta"}
           </Button>
           <p className="text-xs text-center text-muted-foreground">
-            Já tem conta? <Link to="/login" className="hover:underline">Entrar</Link>
+            Já tem conta?{" "}
+            <Link to="/login" className="hover:underline">
+              Entrar
+            </Link>
           </p>
         </form>
       </Card>

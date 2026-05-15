@@ -12,7 +12,7 @@ const mapCatalogItem = (row: CatalogRow): CatalogItem => {
       id: row.id,
       itemCode: row.item_code,
       name: row.name,
-      itemType: (row.item_type as any) || "product",
+      itemType: row.item_type as CatalogItemType,
       unitCode: row.unit_code,
       salePrice: Number(row.sale_price) || 0,
       costPrice: Number(row.cost_price) || 0,
@@ -52,7 +52,7 @@ export const catalogService = {
 
       if (error) {
         console.error("[CatalogService] Supabase error listing items:", error);
-        // Se a tabela não existir, retornamos vazio em vez de quebrar tudo, 
+        // Se a tabela não existir, retornamos vazio em vez de quebrar tudo,
         // mas lançamos para o loader tratar se necessário.
         throw error;
       }

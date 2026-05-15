@@ -126,7 +126,9 @@ function RootComponent() {
     pathname === "/login" || pathname === "/signup" || pathname === "/reset-password";
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
       queryClient.invalidateQueries();
     });
     return () => subscription.unsubscribe();
@@ -136,7 +138,13 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AuthProvider>
-          {isAuthShell ? <Outlet /> : <AuthGuard><AppLayout /></AuthGuard>}
+          {isAuthShell ? (
+            <Outlet />
+          ) : (
+            <AuthGuard>
+              <AppLayout />
+            </AuthGuard>
+          )}
           <Toaster />
         </AuthProvider>
       </ThemeProvider>

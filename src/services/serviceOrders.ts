@@ -8,6 +8,10 @@ type ServiceOrderUpdate = Database["public"]["Tables"]["service_orders"]["Update
 type ServiceOrderTaskRow = Database["public"]["Tables"]["service_order_tasks"]["Row"];
 type ServiceOrderTaskInsert = Database["public"]["Tables"]["service_order_tasks"]["Insert"];
 
+type ServiceOrderWithRelations = ServiceOrderRow & {
+  service_order_tasks?: ServiceOrderTaskRow[] | null;
+};
+
 const mapTask = (row: ServiceOrderTaskRow): ServiceOrderTask => ({
   id: row.id,
   serviceOrderId: row.service_order_id,
@@ -17,9 +21,7 @@ const mapTask = (row: ServiceOrderTaskRow): ServiceOrderTask => ({
   completedAt: row.completed_at ?? undefined,
 });
 
-const mapServiceOrder = (
-  row: ServiceOrderRow & { service_order_tasks?: ServiceOrderTaskRow[] | null },
-): ServiceOrder => ({
+const mapServiceOrder = (row: ServiceOrderWithRelations): ServiceOrder => ({
   id: row.id,
   osNumber: row.os_number,
   customerId: row.customer_id,
@@ -42,7 +44,9 @@ const mapServiceOrder = (
   tasks: (row.service_order_tasks ?? []).map(mapTask),
 });
 
-const buildServiceOrderPayload = (data: Partial<ServiceOrder>): ServiceOrderInsert | ServiceOrderUpdate => ({
+const buildServiceOrderPayload = (
+  data: Partial<ServiceOrder>,
+): ServiceOrderInsert | ServiceOrderUpdate => ({
   os_number: data.osNumber,
   customer_id: data.customerId,
   contract_id: data.contractId ?? null,
@@ -63,20 +67,20 @@ export const serviceOrderService = {
   list: async (): Promise<ServiceOrder[]> => {
     const { data, error } = await supabase
       .from("service_orders")
-      .select("*, service_order_tasks(*)")
+      .select("*, service_order_tasks!fk_sot_so(*)")
       .order("updated_at", { ascending: false });
     if (error) throw error;
-    return (data ?? []).map((row) => mapServiceOrder(row as any));
+    return (data ?? []).map((row) => mapServiceOrder(row as unknown as ServiceOrderWithRelations));
   },
 
   get: async (id: string): Promise<ServiceOrder | undefined> => {
     const { data, error } = await supabase
       .from("service_orders")
-      .select("*, service_order_tasks(*)")
+      .select("*, service_order_tasks!fk_sot_so(*)")
       .eq("id", id)
       .maybeSingle();
     if (error) throw error;
-    return data ? mapServiceOrder(data as any) : undefined;
+    return data ? mapServiceOrder(data as unknown as ServiceOrderWithRelations) : undefined;
   },
 
   create: async (data: Partial<ServiceOrder>) => {
@@ -102,10 +106,10 @@ export const serviceOrderService = {
         description: data.description ?? null,
         assigned_to: data.assignedTo ?? null,
       })
-      .select("*, service_order_tasks(*)")
+      .select("*, service_order_tasks!fk_sot_so(*)")
       .single();
     if (error) throw error;
-    return mapServiceOrder(created as any);
+    return mapServiceOrder(created as unknown as ServiceOrderWithRelations);
   },
 
   update: async (id: string, data: Partial<ServiceOrder>) => {
@@ -113,10 +117,10 @@ export const serviceOrderService = {
       .from("service_orders")
       .update(buildServiceOrderPayload(data))
       .eq("id", id)
-      .select("*, service_order_tasks(*)")
+      .select("*, service_order_tasks!fk_sot_so(*)")
       .single();
     if (error) throw error;
-    return mapServiceOrder(updated as any);
+    return mapServiceOrder(updated as unknown as ServiceOrderWithRelations);
   },
 
   remove: async (id: string) => {
@@ -152,7 +156,11 @@ export const serviceOrderService = {
       completed_at: null,
     };
 
-    const { data, error } = await supabase.from("service_order_tasks").insert(payload).select().single();
+    const { data, error } = await supabase
+      .from("service_order_tasks")
+      .insert(payload)
+      .select()
+      .single();
     if (error) throw error;
     return mapTask(data);
   },

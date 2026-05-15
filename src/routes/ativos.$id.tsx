@@ -26,7 +26,12 @@ function AtivoDetalhe() {
   const { data: tickets = [], isLoading: isLoadingTickets } = useTickets();
   const { data: contratos = [], isLoading: isLoadingContracts } = useContracts();
 
-  const isLoading = isLoadingAsset || isLoadingCustomer || isLoadingOrders || isLoadingTickets || isLoadingContracts;
+  const isLoading =
+    isLoadingAsset ||
+    isLoadingCustomer ||
+    isLoadingOrders ||
+    isLoadingTickets ||
+    isLoadingContracts;
 
   if (isLoading) {
     return (

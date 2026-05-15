@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, type Mock } from "vitest";
 import { catalogService } from "./catalog";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -19,7 +19,7 @@ describe("catalogService", () => {
   });
 
   it("deve lançar erro se o supabase retornar erro", async () => {
-    (supabase.from as any).mockImplementationOnce(() => ({
+    (supabase.from as Mock).mockImplementationOnce(() => ({
       select: vi.fn(() => ({
         order: vi.fn(() => Promise.resolve({ data: null, error: { message: "Table not found" } })),
       })),
@@ -46,7 +46,7 @@ describe("catalogService", () => {
       updated_at: "2024-01-01",
     };
 
-    (supabase.from as any).mockImplementationOnce(() => ({
+    (supabase.from as Mock).mockImplementationOnce(() => ({
       select: vi.fn(() => ({
         order: vi.fn(() => Promise.resolve({ data: [mockRow], error: null })),
       })),

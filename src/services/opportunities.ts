@@ -21,7 +21,9 @@ const mapOpportunity = (row: OpportunityRow): Opportunity => ({
   updatedAt: row.updated_at,
 });
 
-const buildOpportunityPayload = (data: Partial<Opportunity>): OpportunityInsert | OpportunityUpdate => ({
+const buildOpportunityPayload = (
+  data: Partial<Opportunity>,
+): OpportunityInsert | OpportunityUpdate => ({
   lead_id: data.leadId ?? null,
   customer_id: data.customerId ?? null,
   title: data.title,
@@ -35,7 +37,10 @@ const buildOpportunityPayload = (data: Partial<Opportunity>): OpportunityInsert 
 
 export const opportunityService = {
   list: async (): Promise<Opportunity[]> => {
-    const { data, error } = await supabase.from("opportunities").select("*").order("updated_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("opportunities")
+      .select("*")
+      .order("updated_at", { ascending: false });
     if (error) throw error;
     return (data ?? []).map(mapOpportunity);
   },

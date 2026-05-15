@@ -23,7 +23,9 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 async function findUserByEmail(email) {
   const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
   if (error) throw error;
-  const user = (data?.users || []).find((u) => (u.email || "").toLowerCase() === email.toLowerCase());
+  const user = (data?.users || []).find(
+    (u) => (u.email || "").toLowerCase() === email.toLowerCase(),
+  );
   return user || null;
 }
 
@@ -50,16 +52,14 @@ async function main() {
 
   if (!user) throw new Error("Unable to resolve admin user");
 
-  const { error: profileError } = await supabase
-    .from("profiles")
-    .upsert(
-      {
-        id: user.id,
-        email: user.email,
-        full_name: ADMIN_NAME || user.user_metadata?.full_name || user.email,
-      },
-      { onConflict: "id" },
-    );
+  const { error: profileError } = await supabase.from("profiles").upsert(
+    {
+      id: user.id,
+      email: user.email,
+      full_name: ADMIN_NAME || user.user_metadata?.full_name || user.email,
+    },
+    { onConflict: "id" },
+  );
   if (profileError) throw profileError;
 
   const { error: roleError } = await supabase
@@ -74,4 +74,3 @@ main().catch((e) => {
   console.error(e);
   process.exit(1);
 });
-

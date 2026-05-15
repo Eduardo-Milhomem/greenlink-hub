@@ -25,3 +25,23 @@ export const useReceivePayment = () => {
     },
   });
 };
+
+export const useCreateReceivable = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: services.finance.createReceivable,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["receivables"] });
+    },
+  });
+};
+
+export const useCreatePayable = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: services.finance.createPayable,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payables"] });
+    },
+  });
+};

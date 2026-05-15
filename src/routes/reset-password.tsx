@@ -52,21 +52,40 @@ function ResetPage() {
           <form className="mt-6 space-y-4" onSubmit={handleUpdate}>
             <div className="space-y-1.5">
               <Label htmlFor="np">Nova senha</Label>
-              <Input id="np" type="password" required minLength={8} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+              <Input
+                id="np"
+                type="password"
+                required
+                minLength={8}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
             </div>
-            <Button type="submit" className="w-full" disabled={submitting}>Atualizar senha</Button>
+            <Button type="submit" className="w-full" disabled={submitting}>
+              Atualizar senha
+            </Button>
           </form>
         ) : (
           <form className="mt-6 space-y-4" onSubmit={handleRequest}>
             <div className="space-y-1.5">
               <Label htmlFor="email">E-mail</Label>
-              <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
-            <Button type="submit" className="w-full" disabled={submitting}>Enviar link</Button>
+            <Button type="submit" className="w-full" disabled={submitting}>
+              Enviar link
+            </Button>
           </form>
         )}
         <p className="mt-4 text-xs text-center text-muted-foreground">
-          <Link to="/login" className="hover:underline">Voltar para login</Link>
+          <Link to="/login" className="hover:underline">
+            Voltar para login
+          </Link>
         </p>
       </Card>
     </div>

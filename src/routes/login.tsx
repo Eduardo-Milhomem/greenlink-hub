@@ -75,11 +75,23 @@ function LoginPage() {
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-1.5">
               <Label htmlFor="email">E-mail</Label>
-              <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="senha">Senha</Label>
-              <Input id="senha" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+              <Input
+                id="senha"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </div>
             <Button type="submit" className="w-full" disabled={submitting}>
               {submitting ? "Entrando…" : "Entrar"}
@@ -88,8 +100,12 @@ function LoginPage() {
               Entrar com Google
             </Button>
             <div className="flex justify-between text-xs text-muted-foreground">
-              <Link to="/signup" className="hover:underline">Criar conta</Link>
-              <Link to="/reset-password" className="hover:underline">Esqueci a senha</Link>
+              <Link to="/signup" className="hover:underline">
+                Criar conta
+              </Link>
+              <Link to="/reset-password" className="hover:underline">
+                Esqueci a senha
+              </Link>
             </div>
           </form>
         </Card>

@@ -8,6 +8,8 @@ type QuoteUpdate = Database["public"]["Tables"]["quotes"]["Update"];
 type QuoteItemRow = Database["public"]["Tables"]["quote_items"]["Row"];
 type QuoteItemInsert = Database["public"]["Tables"]["quote_items"]["Insert"];
 
+type QuoteWithRelations = QuoteRow & { quote_items?: QuoteItemRow[] | null };
+
 const mapQuoteItem = (row: QuoteItemRow): QuoteItem => ({
   id: row.id,
   quoteId: row.quote_id,
@@ -21,7 +23,7 @@ const mapQuoteItem = (row: QuoteItemRow): QuoteItem => ({
   sortOrder: row.sort_order,
 });
 
-const mapQuote = (row: QuoteRow & { quote_items?: QuoteItemRow[] | null }): Quote => ({
+const mapQuote = (row: QuoteWithRelations): Quote => ({
   id: row.id,
   quoteNumber: row.quote_number,
   customerId: row.customer_id,
@@ -67,25 +69,27 @@ export const quoteService = {
   list: async (): Promise<Quote[]> => {
     const { data, error } = await supabase
       .from("quotes")
-      .select("*, quote_items(*)")
+      .select("*, quote_items!fk_qi_quote(*)")
       .order("created_at", { ascending: false });
     if (error) throw error;
-    return (data ?? []).map((row) => mapQuote(row as any));
+    return (data ?? []).map((row) => mapQuote(row as unknown as QuoteWithRelations));
   },
 
   get: async (id: string): Promise<Quote | undefined> => {
     const { data, error } = await supabase
       .from("quotes")
-      .select("*, quote_items(*)")
+      .select("*, quote_items!fk_qi_quote(*)")
       .eq("id", id)
       .maybeSingle();
     if (error) throw error;
-    return data ? mapQuote(data as any) : undefined;
+    return data ? mapQuote(data as unknown as QuoteWithRelations) : undefined;
   },
 
   create: async (data: Partial<Quote>) => {
     const now = new Date();
-    const quoteNumber = data.quoteNumber ?? `QT-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${Math.random().toString(16).slice(2, 6).toUpperCase()}`;
+    const quoteNumber =
+      data.quoteNumber ??
+      `QT-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${Math.random().toString(16).slice(2, 6).toUpperCase()}`;
     const items: QuoteItem[] = data.items ?? [];
     const totals = calcTotalsFromItems(items);
 
@@ -135,7 +139,7 @@ export const quoteService = {
       .select()
       .single();
     if (error) throw error;
-    return mapQuote(updated as any);
+    return mapQuote(updated as unknown as QuoteWithRelations);
   },
 
   remove: async (id: string) => {

@@ -6,10 +6,12 @@ description: "Implements code changes following repo conventions and showing dif
 # Implementer
 
 ## Quando invocar
+
 - Implementar feature/bugfix/refactor.
 - Ajustar build/config (Vite, TS, etc.).
 
 ## Procedimento
+
 - Localizar arquivos relevantes.
 - Ler arquivos antes de propor alterações.
 - Para arquivos existentes: produzir preview de diff antes de aplicar mudanças.
@@ -17,6 +19,7 @@ description: "Implements code changes following repo conventions and showing dif
 - Sugerir comandos de verificação (Windows).
 
 ## Qualidade
+
 - Manter consistência de estilo.
 - Evitar dependências novas sem confirmar que já existem no repo.
 - Não adicionar comentários no código, a menos que o usuário peça.

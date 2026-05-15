@@ -44,7 +44,7 @@ export const Route = createFileRoute("/estoque")({
 const ESTOQUE_MIN_DEFAULT = 10;
 const minimoOf = (i: { trackStock?: boolean }) => ESTOQUE_MIN_DEFAULT; // Mock
 
-function calcEstoque(itemId: string, movements: any[]) {
+function calcEstoque(itemId: string, movements: StockMovement[]) {
   return movements
     .filter((m) => m.catalogItemId === itemId)
     .reduce((acc, m) => {
@@ -227,9 +227,7 @@ function EstoquePage() {
                           type="number"
                           defaultValue={min}
                           className="h-7 w-20"
-                          onBlur={(e) =>
-                            console.log("update min stock", p.id, e.target.value)
-                          }
+                          onBlur={(e) => console.log("update min stock", p.id, e.target.value)}
                         />
                       </TableCell>
                       <TableCell>

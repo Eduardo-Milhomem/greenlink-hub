@@ -28,7 +28,8 @@ export const useCreateAsset = () => {
 export const useUpdateAsset = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Asset> }) => services.assets.update(id, data),
+    mutationFn: ({ id, data }: { id: string; data: Partial<Asset> }) =>
+      services.assets.update(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: ["assets"] });
       queryClient.invalidateQueries({ queryKey: ["assets", id] });

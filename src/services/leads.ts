@@ -37,7 +37,10 @@ const buildLeadPayload = (data: Partial<Lead>): LeadInsert | LeadUpdate => ({
 
 export const leadService = {
   list: async (): Promise<Lead[]> => {
-    const { data, error } = await supabase.from("leads").select("*").order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("leads")
+      .select("*")
+      .order("created_at", { ascending: false });
     if (error) throw error;
     return (data ?? []).map(mapLead);
   },

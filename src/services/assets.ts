@@ -42,7 +42,10 @@ const buildAssetPayload = (data: Partial<Asset>): AssetInsert | AssetUpdate => (
 
 export const assetService = {
   list: async (): Promise<Asset[]> => {
-    const { data, error } = await supabase.from("assets").select("*").order("updated_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("assets")
+      .select("*")
+      .order("updated_at", { ascending: false });
     if (error) throw error;
     return (data ?? []).map(mapAsset);
   },

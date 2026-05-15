@@ -7,6 +7,8 @@ type TicketInsert = Database["public"]["Tables"]["support_tickets"]["Insert"];
 type TicketUpdate = Database["public"]["Tables"]["support_tickets"]["Update"];
 type TicketMessageRow = Database["public"]["Tables"]["ticket_messages"]["Row"];
 
+type TicketWithRelations = TicketRow & { ticket_messages?: TicketMessageRow[] | null };
+
 const mapMessage = (row: TicketMessageRow): TicketMessage => ({
   id: row.id,
   ticketId: row.ticket_id,
@@ -17,7 +19,7 @@ const mapMessage = (row: TicketMessageRow): TicketMessage => ({
   createdAt: row.created_at,
 });
 
-const mapTicket = (row: TicketRow & { ticket_messages?: TicketMessageRow[] | null }): SupportTicket => ({
+const mapTicket = (row: TicketWithRelations): SupportTicket => ({
   id: row.id,
   ticketNumber: row.ticket_number,
   customerId: row.customer_id,
@@ -58,20 +60,20 @@ export const ticketService = {
   list: async (): Promise<SupportTicket[]> => {
     const { data, error } = await supabase
       .from("support_tickets")
-      .select("*, ticket_messages(*)")
+      .select("*, ticket_messages!fk_tm_ticket(*)")
       .order("updated_at", { ascending: false });
     if (error) throw error;
-    return (data ?? []).map((row) => mapTicket(row as any));
+    return (data ?? []).map((row) => mapTicket(row as unknown as TicketWithRelations));
   },
 
   get: async (id: string): Promise<SupportTicket | undefined> => {
     const { data, error } = await supabase
       .from("support_tickets")
-      .select("*, ticket_messages(*)")
+      .select("*, ticket_messages!fk_tm_ticket(*)")
       .eq("id", id)
       .maybeSingle();
     if (error) throw error;
-    return data ? mapTicket(data as any) : undefined;
+    return data ? mapTicket(data as unknown as TicketWithRelations) : undefined;
   },
 
   create: async (data: Partial<SupportTicket>) => {
@@ -96,10 +98,10 @@ export const ticketService = {
         sla_due_at: data.slaDueAt ?? null,
         assigned_to: data.assignedTo ?? null,
       })
-      .select("*, ticket_messages(*)")
+      .select("*, ticket_messages!fk_tm_ticket(*)")
       .single();
     if (error) throw error;
-    return mapTicket(created as any);
+    return mapTicket(created as unknown as TicketWithRelations);
   },
 
   update: async (id: string, data: Partial<SupportTicket>) => {
@@ -107,10 +109,10 @@ export const ticketService = {
       .from("support_tickets")
       .update(buildTicketPayload(data))
       .eq("id", id)
-      .select("*, ticket_messages(*)")
+      .select("*, ticket_messages!fk_tm_ticket(*)")
       .single();
     if (error) throw error;
-    return mapTicket(updated as any);
+    return mapTicket(updated as unknown as TicketWithRelations);
   },
 
   addMessage: async (ticketId: string, author: string, text: string, internal: boolean = false) => {
@@ -133,8 +135,7 @@ export const ticketService = {
     if (!ticket) throw new Error("Ticket não encontrado");
 
     const now = new Date();
-    const osNumber =
-      `OS-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${Math.random().toString(16).slice(2, 6).toUpperCase()}`;
+    const osNumber = `OS-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${Math.random().toString(16).slice(2, 6).toUpperCase()}`;
 
     const { data: os, error } = await supabase
       .from("service_orders")

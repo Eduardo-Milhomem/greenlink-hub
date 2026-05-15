@@ -29,7 +29,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageContainer, PageHeader } from "@/components/layout/page";
-import { useAssets, useCreateAsset, useCustomers, useServiceOrders, useUpdateAsset } from "@/hooks/domain";
+import {
+  useAssets,
+  useCreateAsset,
+  useCustomers,
+  useServiceOrders,
+  useUpdateAsset,
+} from "@/hooks/domain";
 import { formatDate } from "@/lib/formatters";
 import type { AssetStatus } from "@/types/asset";
 import { Plus } from "lucide-react";
@@ -243,11 +249,11 @@ function AtivosPage() {
                     <TableCell>
                       <Select
                         value={assetStatusToUi[a.status] ?? "ativo"}
-                        onValueChange={async (v) => {
+                        onValueChange={async (v: "ativo" | "manutencao" | "baixado") => {
                           try {
                             await updateAsset.mutateAsync({
                               id: a.id,
-                              data: { status: statusToAssetStatus[v as any] },
+                              data: { status: statusToAssetStatus[v] },
                             });
                           } catch (e) {
                             toast.error("Erro ao atualizar status");

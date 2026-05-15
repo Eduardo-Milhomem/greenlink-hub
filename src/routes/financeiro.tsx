@@ -30,7 +30,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageContainer, PageHeader } from "@/components/layout/page";
-import { useReceivables, usePayables, useCustomers, useReceivePayment } from "@/hooks/domain";
+import {
+  useReceivables,
+  usePayables,
+  useCustomers,
+  useReceivePayment,
+  useCreateReceivable,
+  useCreatePayable,
+} from "@/hooks/domain";
 import { formatBRL, formatDate } from "@/lib/formatters";
 import {
   Plus,
@@ -76,6 +83,8 @@ function Financeiro() {
   const { data: payables = [], isLoading: isLoadingPayables } = usePayables();
   const { data: customers = [], isLoading: isLoadingCustomers } = useCustomers();
   const receivePayment = useReceivePayment();
+  const createReceivable = useCreateReceivable();
+  const createPayable = useCreatePayable();
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
@@ -108,8 +117,64 @@ function Financeiro() {
   const saldoPrev = totReceber30 - totPagar30;
 
   const submit = async () => {
-    toast.info("Lógica de criação em serviços.");
-    setOpen(false);
+    if (!form.description.trim()) {
+      toast.error("Informe a descrição do lançamento.");
+      return;
+    }
+    if (!form.amount || Number(form.amount) <= 0) {
+      toast.error("Informe um valor válido maior que zero.");
+      return;
+    }
+    if (!form.dueDate) {
+      toast.error("Informe a data de vencimento.");
+      return;
+    }
+    if (form.tipo === "receber" && !form.customerId) {
+      toast.error("Selecione o cliente.");
+      return;
+    }
+
+    try {
+      if (form.tipo === "receber") {
+        await createReceivable.mutateAsync({
+          description: form.description.trim(),
+          customerId: form.customerId,
+          amount: Number(form.amount),
+          dueDate: form.dueDate,
+          status: "open",
+        });
+        toast.success("Conta a receber criada com sucesso!");
+      } else {
+        await createPayable.mutateAsync({
+          description: form.description.trim(),
+          amount: Number(form.amount),
+          dueDate: form.dueDate,
+          status: "open",
+        });
+        toast.success("Conta a pagar criada com sucesso!");
+      }
+      setForm({
+        tipo: form.tipo,
+        description: "",
+        customerId: "",
+        amount: "",
+        dueDate: new Date().toISOString().slice(0, 10),
+      });
+      setOpen(false);
+    } catch (err) {
+      console.error(err);
+      const e = err as { message?: string; code?: string };
+      let message = "Erro ao criar lançamento.";
+      if (
+        e.code === "42501" ||
+        (e.message && e.message.toLowerCase().includes("permission denied"))
+      ) {
+        message = "Você não tem permissão para criar lançamentos. Fale com um administrador.";
+      } else if (e.code === "23503") {
+        message = "Dados inválidos. Verifique se o cliente está correto.";
+      }
+      toast.error(message);
+    }
   };
 
   return (

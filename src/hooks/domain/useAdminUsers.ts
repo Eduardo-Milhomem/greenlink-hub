@@ -15,7 +15,8 @@ export const useAdminUsers = () => {
 export const useAddUserRole = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ userId, role }: { userId: string; role: AppRole }) => services.admin.addRole(userId, role),
+    mutationFn: ({ userId, role }: { userId: string; role: AppRole }) =>
+      services.admin.addRole(userId, role),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "users"] }),
   });
 };
@@ -23,10 +24,10 @@ export const useAddUserRole = () => {
 export const useRemoveUserRole = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ userId, role }: { userId: string; role: AppRole }) => services.admin.removeRole(userId, role),
+    mutationFn: ({ userId, role }: { userId: string; role: AppRole }) =>
+      services.admin.removeRole(userId, role),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "users"] }),
   });
 };
 
 export type { AdminUser, AppRole };
-

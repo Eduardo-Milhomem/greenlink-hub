@@ -5,6 +5,8 @@ import type { CustomerOrder, CustomerOrderItem, OrderStatus } from "@/types/orde
 type OrderRow = Database["public"]["Tables"]["customer_orders"]["Row"];
 type OrderItemRow = Database["public"]["Tables"]["order_items"]["Row"];
 
+type OrderWithRelations = OrderRow & { order_items?: OrderItemRow[] | null };
+
 const mapOrderItem = (row: OrderItemRow): CustomerOrderItem => ({
   id: row.id,
   orderId: row.order_id,
@@ -18,7 +20,7 @@ const mapOrderItem = (row: OrderItemRow): CustomerOrderItem => ({
   serviceEndDate: row.service_end_date ?? undefined,
 });
 
-const mapOrder = (row: OrderRow & { order_items?: OrderItemRow[] | null }): CustomerOrder => ({
+const mapOrder = (row: OrderWithRelations): CustomerOrder => ({
   id: row.id,
   orderNumber: row.order_number,
   quoteId: row.quote_id ?? undefined,
@@ -36,23 +38,23 @@ const mapOrder = (row: OrderRow & { order_items?: OrderItemRow[] | null }): Cust
 });
 
 export const orderService = {
-  list: async (): Promise<CustomerOrder[]> => {
+  list: async (): Promise<Order[]> => {
     const { data, error } = await supabase
       .from("customer_orders")
-      .select("*, order_items(*)")
+      .select("*, order_items!fk_oi_order(*)")
       .order("created_at", { ascending: false });
     if (error) throw error;
-    return (data ?? []).map((row) => mapOrder(row as any));
+    return (data ?? []).map((row) => mapOrder(row as unknown as OrderWithRelations));
   },
 
-  get: async (id: string): Promise<CustomerOrder | undefined> => {
+  get: async (id: string): Promise<Order | undefined> => {
     const { data, error } = await supabase
       .from("customer_orders")
-      .select("*, order_items(*)")
+      .select("*, order_items!fk_oi_order(*)")
       .eq("id", id)
       .maybeSingle();
     if (error) throw error;
-    return data ? mapOrder(data as any) : undefined;
+    return data ? mapOrder(data as unknown as OrderWithRelations) : undefined;
   },
 
   setStatus: async (id: string, status: string) => {

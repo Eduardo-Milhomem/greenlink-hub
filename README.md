@@ -30,6 +30,7 @@ Sistema de gestão integrada para provedores de internet (ISPs) e empresas de te
 O projeto utiliza o Supabase como backend. As migrations SQL estão localizadas em `supabase/migrations/`.
 
 Para aplicar as migrations em um novo projeto Supabase:
+
 1. Acesse o painel do Supabase > SQL Editor
 2. Execute os scripts na ordem cronológica
 3. Certifique-se de que as políticas de RLS (Row Level Security) foram aplicadas corretamente.
@@ -37,6 +38,7 @@ Para aplicar as migrations em um novo projeto Supabase:
 ### Políticas de Acesso (RLS)
 
 O sistema utiliza um modelo de acesso **Operacional**:
+
 - **Leitura**: Todos os usuários autenticados podem ler os dados operacionais.
 - **Escrita**: Apenas usuários com as roles `admin` ou `manager` podem inserir, atualizar ou excluir registros.
 - **Perfis e Roles**: Usuários podem editar apenas o próprio perfil. Apenas `admin` pode gerenciar roles de outros usuários.
@@ -46,6 +48,7 @@ O sistema utiliza um modelo de acesso **Operacional**:
 A autenticação é gerenciada nativamente pelo Supabase Auth.
 
 Para criar o usuário administrador inicial:
+
 1. Certifique-se de que a variável `SUPABASE_SERVICE_ROLE_KEY` está configurada no `.env`.
 2. Execute o script de seed:
    ```bash

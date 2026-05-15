@@ -3,11 +3,18 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageContainer, PageHeader } from "@/components/layout/page";
+import { formatBRL, formatDate } from "@/lib/formatters";
 import {
-  formatBRL,
-  formatDate,
-} from "@/lib/formatters";
-import { useCustomers, useOpportunities, useQuotes, useOrders, useContracts, useServiceOrders, useTickets, useAssets, useReceivables } from "@/hooks/domain";
+  useCustomers,
+  useOpportunities,
+  useQuotes,
+  useOrders,
+  useContracts,
+  useServiceOrders,
+  useTickets,
+  useAssets,
+  useReceivables,
+} from "@/hooks/domain";
 import { ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/clientes/$id")({
@@ -51,9 +58,7 @@ function ClienteDetalhe() {
   const aReceber = lcts
     .filter((l) => l.status !== "paid" && l.status !== "cancelled")
     .reduce((a, l) => a + l.openAmount, 0);
-  const recebido = lcts
-    .filter((l) => l.status === "paid")
-    .reduce((a, l) => a + l.amount, 0);
+  const recebido = lcts.filter((l) => l.status === "paid").reduce((a, l) => a + l.amount, 0);
 
   // Timeline: junta tudo ordenado por data desc
   type Evt = { d: string; label: string; href?: string };
@@ -133,7 +138,11 @@ function ClienteDetalhe() {
             <Field label="Telefone" value={cliente.phone} />
             <Field label="Cidade" value={cliente.city} />
             <Field label="UF" value={cliente.state} />
-            <Field label="Endereço" value={cliente.addresses?.[0]?.street} className="sm:col-span-2" />
+            <Field
+              label="Endereço"
+              value={cliente.addresses?.[0]?.street}
+              className="sm:col-span-2"
+            />
             <Field label="Cadastrado em" value={formatDate(cliente.createdAt)} />
           </Card>
         </TabsContent>

@@ -75,20 +75,34 @@ function ClientesPage() {
                 onSubmit={async (e) => {
                   e.preventDefault();
                   const fd = new FormData(e.currentTarget);
+                  const normalize = (value: FormDataEntryValue | null) => {
+                    const s = (value ?? "").toString().trim();
+                    return s.length ? s : undefined;
+                  };
                   try {
                     await createCustomer.mutateAsync({
                       customerType: tipo,
                       legalName: String(fd.get("nome")),
-                      documentNumber: String(fd.get("documento") || ""),
-                      email: String(fd.get("email") || ""),
-                      phone: String(fd.get("telefone") || ""),
-                      city: String(fd.get("cidade") || ""),
-                      state: String(fd.get("estado") || ""),
+                      documentNumber: normalize(fd.get("documento")),
+                      email: normalize(fd.get("email")),
+                      phone: normalize(fd.get("telefone")),
+                      city: normalize(fd.get("cidade")),
+                      state: normalize(fd.get("estado")),
                     });
                     toast.success("Cliente cadastrado");
                     setOpen(false);
                   } catch (err) {
-                    toast.error("Erro ao cadastrar cliente");
+                    console.error(err);
+                    const e2 = err as { message?: string; code?: string };
+                    let message = "Erro ao cadastrar cliente";
+                    if (
+                      e2.code === "42501" ||
+                      (e2.message && e2.message.toLowerCase().includes("row-level security"))
+                    ) {
+                      message =
+                        "Você não tem permissão para cadastrar clientes. Fale com um administrador para ajustar suas permissões.";
+                    }
+                    toast.error(message);
                   }
                 }}
               >

@@ -8,6 +8,11 @@ type CustomerUpdate = Database["public"]["Tables"]["customers"]["Update"];
 type CustomerContactRow = Database["public"]["Tables"]["customer_contacts"]["Row"];
 type CustomerAddressRow = Database["public"]["Tables"]["customer_addresses"]["Row"];
 
+type CustomerWithRelations = CustomerRow & {
+  customer_contacts?: CustomerContactRow[] | null;
+  customer_addresses?: CustomerAddressRow[] | null;
+};
+
 const mapContact = (row: CustomerContactRow): CustomerContact => ({
   id: row.id,
   fullName: row.full_name,
@@ -17,12 +22,7 @@ const mapContact = (row: CustomerContactRow): CustomerContact => ({
   isPrimary: !!row.is_primary,
 });
 
-const mapCustomer = (
-  row: CustomerRow & {
-    customer_contacts?: CustomerContactRow[] | null;
-    customer_addresses?: CustomerAddressRow[] | null;
-  },
-): Customer => ({
+const mapCustomer = (row: CustomerWithRelations): Customer => ({
   id: row.id,
   customerType: row.customer_type,
   legalName: row.legal_name,
@@ -69,20 +69,20 @@ export const customerService = {
   list: async (): Promise<Customer[]> => {
     const { data, error } = await supabase
       .from("customers")
-      .select("*, customer_contacts(*), customer_addresses(*)")
+      .select("*, customer_contacts!fk_cc_customer(*), customer_addresses!fk_ca_customer(*)")
       .order("created_at", { ascending: false });
     if (error) throw error;
-    return (data ?? []).map((row) => mapCustomer(row as any));
+    return (data ?? []).map((row) => mapCustomer(row as unknown as CustomerWithRelations));
   },
 
   get: async (id: string): Promise<Customer | undefined> => {
     const { data, error } = await supabase
       .from("customers")
-      .select("*, customer_contacts(*), customer_addresses(*)")
+      .select("*, customer_contacts!fk_cc_customer(*), customer_addresses!fk_ca_customer(*)")
       .eq("id", id)
       .maybeSingle();
     if (error) throw error;
-    return data ? mapCustomer(data as any) : undefined;
+    return data ? mapCustomer(data as unknown as CustomerWithRelations) : undefined;
   },
 
   create: async (data: Partial<Customer>) => {
@@ -100,10 +100,10 @@ export const customerService = {
         status: data.status ?? "active",
         notes: data.notes ?? null,
       })
-      .select("*, customer_contacts(*), customer_addresses(*)")
+      .select("*, customer_contacts!fk_cc_customer(*), customer_addresses!fk_ca_customer(*)")
       .single();
     if (error) throw error;
-    return mapCustomer(created as any);
+    return mapCustomer(created as unknown as CustomerWithRelations);
   },
 
   update: async (id: string, data: Partial<Customer>) => {
@@ -111,10 +111,10 @@ export const customerService = {
       .from("customers")
       .update(buildCustomerPayload(data))
       .eq("id", id)
-      .select("*, customer_contacts(*), customer_addresses(*)")
+      .select("*, customer_contacts!fk_cc_customer(*), customer_addresses!fk_ca_customer(*)")
       .single();
     if (error) throw error;
-    return mapCustomer(updated as any);
+    return mapCustomer(updated as unknown as CustomerWithRelations);
   },
 
   remove: async (id: string) => {

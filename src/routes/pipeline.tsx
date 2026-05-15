@@ -30,7 +30,12 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { PageContainer, PageHeader } from "@/components/layout/page";
-import { useCustomers, useCreateOpportunity, useMoveOpportunity, useOpportunities } from "@/hooks/domain";
+import {
+  useCustomers,
+  useCreateOpportunity,
+  useMoveOpportunity,
+  useOpportunities,
+} from "@/hooks/domain";
 import { formatBRL } from "@/lib/formatters";
 import type { Opportunity, OpportunityStage } from "@/types/opportunity";
 import { Plus, GripVertical } from "lucide-react";
