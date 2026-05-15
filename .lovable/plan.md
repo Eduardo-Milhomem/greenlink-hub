@@ -1,98 +1,83 @@
-## Contexto
 
-A análise crítica é clara: o app já tem identidade visual e taxonomia corretas, mas opera sobre `localStorage` (`greenlink-adm-v3`), com várias telas em loading infinito e sem auth. Antes de qualquer nova feature, é preciso resolver a **coluna vertebral**: dados reais, auth, e estados padronizados (loading/vazio/erro/sucesso).
+# Plano — Banco real, Auth e remoção total de mocks
 
-Esta é a **Etapa 1 da Opção A** ("infraestrutura real de dados e auth"). As próximas (fluxo comercial, contrato/ativo/OS, financeiro, suporte, dashboard executivo) virão em sprints seguintes, sobre a base que esta sprint instala.
+## Estado atual
+- Schema Postgres (Supabase) já criado em sprint anterior: 22 tabelas (`profiles`, `user_roles`, `customers`, `customer_contacts`, `customer_addresses`, `leads`, `opportunities`, `catalog_items`, `quotes`, `quote_items`, `customer_orders`, `order_items`, `contracts`, `contract_items`, `assets`, `service_orders`, `service_order_tasks`, `support_tickets`, `ticket_messages`, `stock_balances`, `stock_movements`, `receivables`, `payables`).
+- RLS habilitado em todas as tabelas (leitura para autenticados, mutações para `admin/manager`). `has_role()`, `is_staff()`, `handle_new_user()` em vigor.
+- Cliente Supabase (browser/admin/middleware) gerado. Auth não está integrada na UI: `/login` faz `navigate("/dashboard")` sem credenciais.
+- Todos os 12 services em `src/services/*` ainda chamam `useAppStore.getState()` (mock localStorage).
+- `__root.tsx` não tem `_authenticated` layout nem listener `onAuthStateChange`.
 
-## Objetivo da Sprint 1
+## Escopo desta entrega
 
-Substituir o mock store por persistência real no Supabase (via Lovable Cloud), com autenticação obrigatória, sem reescrever a UI. A camada `services/` + `hooks/domain/` já existente continua sendo o contrato — só a implementação por dentro muda.
+### 1. Modelo de dados (gaps a corrigir)
+A maioria das relações já existe via colunas `*_id`, mas faltam **foreign keys explícitas** (tabela "No foreign keys" em todas). Migration única adicionando FKs para integridade referencial:
+- `customer_contacts.customer_id`, `customer_addresses.customer_id` → `customers(id) ON DELETE CASCADE`
+- `opportunities.customer_id`, `opportunities.lead_id` → respectivas (`SET NULL`)
+- `quotes.customer_id`, `quotes.opportunity_id`, `quote_items.quote_id`, `quote_items.catalog_item_id`
+- `customer_orders.customer_id`, `customer_orders.quote_id`, `order_items.order_id`, `order_items.catalog_item_id`
+- `contracts.customer_id`, `contracts.order_id`, `contract_items.contract_id`, `contract_items.catalog_item_id`
+- `assets.customer_id`, `assets.contract_id`, `assets.catalog_item_id`, `assets.address_id`
+- `service_orders.customer_id`, `.contract_id`, `.asset_id`, `.order_id`, `.ticket_id`
+- `service_order_tasks.service_order_id` (CASCADE)
+- `support_tickets.customer_id`, `.contract_id`, `.asset_id`
+- `ticket_messages.ticket_id` (CASCADE)
+- `stock_balances.catalog_item_id` (PK composto warehouse+item), `stock_movements.catalog_item_id`
+- `receivables.customer_id`, `.contract_id`, `.order_id`; `payables.supplier_id`
+- Triggers `touch_updated_at` em todas tabelas que tem `updated_at`
+- Constraint UNIQUE em campos de número (`quote_number`, `order_number`, `contract_number`, `os_number`, `ticket_number`, `asset_tag`, `item_code`)
+- Sequências SQL para gerar números (`gen_quote_number()`, etc.) — funções SECURITY DEFINER
 
-## Escopo
-
-### 1. Habilitar Lovable Cloud
-
-Provisiona Supabase gerenciado (Postgres + Auth + Storage). Sem mencionar Supabase ao usuário final; tratar como "Lovable Cloud".
-
-### 2. Schema inicial no Postgres (migrations)
-
-Criar tabelas alinhadas aos `src/types/*` já em inglês. Sprint 1 cobre apenas o núcleo necessário para destravar Sprint 2:
-
-- `profiles` (1:1 com `auth.users`, `full_name`, `avatar_url`)
-- `user_roles` (enum `app_role: admin | manager | operator | viewer`) + função `has_role()` SECURITY DEFINER
-- `customers` (+ `customer_contacts`, `customer_addresses`)
-- `leads`
-- `catalog_items`
-- `opportunities`
-- `quotes` (+ `quote_items`)
-- `customer_orders` (+ `order_items`)
-- `contracts` (+ `contract_items`) — estrutura, sem motor de recorrência ainda
-- `assets`
-- `service_orders`
-- `support_tickets`
-- `stock_movements`, `stock_balances`
-- `receivables`, `payables`
-
-Todas com `id uuid pk`, `created_at`, `updated_at`, trigger `update_updated_at`. RLS habilitado em todas. Políticas iniciais: usuários autenticados leem; mutações exigem role `admin` ou `manager` via `has_role(auth.uid(), ...)`. Refinamento de policies por owner vem na Sprint 2.
-
-Trigger `handle_new_user` cria `profiles` row + atribui role `viewer` no primeiro signup (primeiro usuário pode ser promovido a admin via SQL).
-
-### 3. Autenticação
-
-- Rota `/login` real (já existe arquivo) com email/senha + Google (broker Lovable).
-- Rota `/signup` (ou aba no login).
-- Layout pathless `_authenticated` envolvendo todas as rotas operacionais; `beforeLoad` redireciona para `/login` se sem sessão.
-- `__root.tsx` registra `onAuthStateChange` que invalida o `queryClient`.
-- `AuthProvider` expõe `user`, `profile`, `roles`, `hasRole()` via contexto do router.
+### 2. Auth real
+- `src/contexts/AuthContext.tsx`: provê `user`, `session`, `profile`, `roles`, `loading`, `signIn`, `signUp`, `signOut`, `resetPassword`. Ouve `onAuthStateChange`.
+- `__root.tsx`: monta `<AuthProvider>` e listener que invalida queryClient.
+- `src/routes/login.tsx`: form real (email/senha) + tab cadastro + link "Esqueci senha".
+- `src/routes/signup.tsx`, `src/routes/reset-password.tsx`: novos.
+- `src/routes/_authenticated.tsx`: layout pathless com `beforeLoad` redirecionando para `/login` se não autenticado.
+- Mover todas as rotas autenticadas para sob `_authenticated/` (renomear: `_authenticated.dashboard.tsx` etc.) — ou usar guard simples no `RootComponent` baseado no contexto. **Decisão: usar guard no RootComponent** (menos churn de arquivos, sem mover 22 rotas).
 - Logout no header.
 
-### 4. Camada de serviços real
+### 3. Migração de services para Supabase
+Reescrever todos os 12 services para usar `supabase.from(...)` em vez de `useAppStore`:
+- `customers.ts`, `leads.ts`, `opportunities.ts`, `catalog.ts`, `quotes.ts` (+items), `orders.ts` (+items), `contracts.ts` (+items), `assets.ts`, `serviceOrders.ts` (+tasks), `tickets.ts` (+messages), `inventory.ts` (movements + balances), `finance.ts` (receivables/payables).
+- Manter as mesmas assinaturas para não quebrar os hooks `useXxx` em `src/hooks/domain/*`.
+- Mapear nomes camelCase ↔ snake_case (Supabase retorna snake_case). Criar helpers `toCamel`/`toSnake` em `src/services/http.ts`.
 
-Substituir cada arquivo em `src/services/*.ts` para usar `supabase` (browser client) em vez de `useAppStore`. Os hooks em `src/hooks/domain/*` não mudam (já usam TanStack Query). Sem `createServerFn` nesta sprint — queries respeitam RLS direto do client é suficiente e mais simples.
+### 4. Remoção de mocks
+- Deletar `src/lib/mock/store.ts` e `src/lib/mock/types.ts`.
+- Remover imports `useAppStore` em todas as rotas (~22 arquivos). Substituir por hooks `useXxx` já existentes ou queries Supabase diretas.
+- Atualizar componentes que usam tipos do `mock/types.ts` (`OrcamentoStatus`, etc.) para usar tipos canônicos em `src/types/*`.
+- `/configuracoes`: remover botão "limpar dados demo".
 
-`src/services/http.ts` é removido (não usado).
+### 5. Componentes de feedback
+- `src/components/feedback/{LoadingState,EmptyState,ErrorState}.tsx` aplicados em listagens.
 
-### 5. Padronização de estados de tela
+### 6. Seed mínimo (opcional, idempotente)
+- Após auth funcionando, inserir 3 customers, 5 catalog_items, 2 leads via `supabase--insert` para o app não nascer vazio.
 
-Criar 3 componentes reutilizáveis em `src/components/feedback/`:
-- `<LoadingState />` (skeleton consistente por tipo de view)
-- `<EmptyState icon title description action />`
-- `<ErrorState error onRetry />`
+### 7. Documentação
+- `docs/DATABASE.md`: lista de tabelas + colunas + relações + RLS.
+- `docs/AUTH.md`: fluxos de signup/login/reset, papéis, RLS.
 
-Aplicar nas rotas que hoje ficam em loading infinito: `/dashboard`, `/leads`, `/clientes`, `/orcamentos`, `/pedidos`, `/contratos`, `/suporte`. Cada `useQuery` passa por `isLoading → isError → data?.length === 0 → conteúdo`.
+### 8. Testes
+- `src/services/__tests__/*.test.ts` smoke tests com Supabase mockado (vitest).
+- Validação manual: criar conta, login, criar customer, ver no Postgres via `read_query`.
 
-### 6. Seed mínimo
+## Observações
+- **Tamanho real:** ~40 arquivos editados/criados, ~15 deletados. É uma sprint completa.
+- **Risco:** quebrar visual das 22 rotas durante a migração. Mitigação: manter assinatura dos hooks `useXxx` idêntica.
+- **Google OAuth:** incluído por padrão (`supabase--configure_social_auth`).
+- **Auto-confirm email:** desabilitado (usuário valida email).
+- **Fora de escopo:** motor de recorrência de contratos, edge functions, dashboards executivos com agregações reais (próximas sprints).
 
-Migration de seed com 3 customers, 5 catalog_items, 2 leads, 1 quote, 1 order de exemplo (apenas para o primeiro admin ter algo na tela). Idempotente via `ON CONFLICT DO NOTHING`.
+## Sequência de execução (commits lógicos)
+1. Migration com FKs + UNIQUE + sequências de numeração.
+2. AuthContext + login real + signup + reset-password + guard.
+3. Services Supabase (12 arquivos) + helpers camelCase.
+4. Limpeza: deletar `lib/mock/*`, remover imports `useAppStore` das 22 rotas.
+5. Componentes de feedback nas listagens principais.
+6. Seed inicial.
+7. `docs/DATABASE.md` + `docs/AUTH.md`.
+8. Smoke tests + validação via `read_query`.
 
-### 7. Limpeza
-
-- Remover `src/lib/mock/store.ts`, `src/lib/mock/types.ts`, persistência `greenlink-adm-v3` do localStorage.
-- Tela `/configuracoes` deixa de mostrar aviso de "dados em localStorage"; passa a expor: perfil do usuário, troca de senha, lista de usuários (admin only) com atribuição de roles.
-
-## Fora de escopo (próximas sprints)
-
-- Motor de recorrência de contratos → Sprint 3
-- Conversão lead→cliente→orçamento→pedido com workflow visual completo → Sprint 2
-- OS/ativos/estoque com movimento real → Sprint 3
-- Dashboard executivo com queries agregadas → Sprint 4
-- SLA de suporte, automações, notificações, portal do cliente → backlog futuro
-- Edge functions / server-side webhooks → quando aparecer integração externa
-
-## Critérios de aceitação
-
-- Lovable Cloud habilitado; tabelas criadas; RLS ativo em todas; `has_role()` funcional.
-- App não funciona sem login; logout retorna a `/login`.
-- Recarregar o navegador mantém a sessão e os dados (não há mais `greenlink-adm-v3` em uso).
-- Nenhuma rota fica em loading infinito: cada uma resolve para uma das 4 telas (loading/vazio/erro/sucesso) com componentes reutilizáveis.
-- Criar um lead, customer, item de catálogo via UI persiste no Postgres e aparece em outro navegador após login.
-- Build verde; testes existentes em `src/lib/search.test.ts` ajustados.
-
-## Detalhes técnicos
-
-- Cliente Supabase: usar `@/integrations/supabase/client` em services. Service-role só se uma operação realmente exigir (não nesta sprint).
-- Tipos do Postgres gerados em `src/integrations/supabase/types.ts` (auto pelo Lovable Cloud). Mapeamento PT↔EN fica nos services, igual ao padrão atual de `customerService`.
-- Roles **nunca** ficam em `profiles` — sempre em `user_roles` (regra de segurança crítica).
-- `has_role()` é `SECURITY DEFINER` com `search_path = public` para evitar recursão de RLS.
-- Migrations versionadas em `supabase/migrations/<timestamp>_*.sql`.
-- Após habilitar Cloud, primeiro usuário criado precisa ser promovido a `admin` via SQL manual (documentado no README).
+Confirma que sigo nessa ordem? É uma entrega grande (~1h de execução com várias migrations e edits). Posso quebrar em duas mensagens — (A) Auth + Migration de FKs + 4 services principais (Customers/Leads/Catalog/Quotes) ou (B) sprint completa de uma vez.

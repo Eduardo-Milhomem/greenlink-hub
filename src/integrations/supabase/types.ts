@@ -95,6 +95,34 @@ export type Database = {
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_a_address"
+            columns: ["address_id"]
+            isOneToOne: false
+            referencedRelation: "customer_addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_a_contract"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_a_customer"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_a_item"
+            columns: ["catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items"
+            referencedColumns: ["id"]
+          },
         ]
       }
       catalog_items: {
@@ -206,6 +234,20 @@ export type Database = {
             referencedRelation: "contracts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_ci_contract"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ci_item"
+            columns: ["catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items"
+            referencedColumns: ["id"]
+          },
         ]
       }
       contracts: {
@@ -278,6 +320,20 @@ export type Database = {
             referencedRelation: "customer_orders"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_ctr_customer"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ctr_order"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "customer_orders"
+            referencedColumns: ["id"]
+          },
         ]
       }
       customer_addresses: {
@@ -334,6 +390,13 @@ export type Database = {
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fk_ca_customer"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
         ]
       }
       customer_contacts: {
@@ -370,6 +433,13 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "customer_contacts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_cc_customer"
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
@@ -433,6 +503,20 @@ export type Database = {
           },
           {
             foreignKeyName: "customer_orders_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_co_customer"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_co_quote"
             columns: ["quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
@@ -595,6 +679,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_opp_customer"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_opp_lead"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "opportunities_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
@@ -648,6 +746,20 @@ export type Database = {
           unit_price?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_oi_item"
+            columns: ["catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_oi_order"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "customer_orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "order_items_catalog_item_id_fkey"
             columns: ["catalog_item_id"]
@@ -775,6 +887,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_qi_item"
+            columns: ["catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_qi_quote"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "quote_items_catalog_item_id_fkey"
             columns: ["catalog_item_id"]
             isOneToOne: false
@@ -846,6 +972,20 @@ export type Database = {
           valid_until?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_q_customer"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_q_opp"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "quotes_customer_id_fkey"
             columns: ["customer_id"]
@@ -919,6 +1059,27 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_r_contract"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_r_customer"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_r_order"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "customer_orders"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "receivables_contract_id_fkey"
             columns: ["contract_id"]
             isOneToOne: false
@@ -967,6 +1128,13 @@ export type Database = {
           title?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_sot_so"
+            columns: ["service_order_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "service_order_tasks_service_order_id_fkey"
             columns: ["service_order_id"]
@@ -1039,6 +1207,41 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_so_asset"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_so_contract"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_so_customer"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_so_order"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "customer_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_so_ticket"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "service_orders_asset_id_fkey"
             columns: ["asset_id"]
             isOneToOne: false
@@ -1102,6 +1305,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_sb_item"
+            columns: ["catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "stock_balances_catalog_item_id_fkey"
             columns: ["catalog_item_id"]
             isOneToOne: false
@@ -1154,6 +1364,13 @@ export type Database = {
           target_warehouse_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_sm_item"
+            columns: ["catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "stock_movements_catalog_item_id_fkey"
             columns: ["catalog_item_id"]
@@ -1220,6 +1437,27 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_st_asset"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_st_contract"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_st_customer"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "support_tickets_asset_id_fkey"
             columns: ["asset_id"]
             isOneToOne: false
@@ -1269,6 +1507,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_tm_ticket"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ticket_messages_ticket_id_fkey"
             columns: ["ticket_id"]
             isOneToOne: false
@@ -1311,6 +1556,10 @@ export type Database = {
         Returns: boolean
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      next_doc_number: {
+        Args: { prefix: string; seq_name: string }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "manager" | "operator" | "viewer"

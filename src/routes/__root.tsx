@@ -5,9 +5,11 @@ import {
   createRootRouteWithContext,
   useRouter,
   useRouterState,
+  useNavigate,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import { useEffect } from "react";
 import appCss from "../styles.css?url";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
@@ -15,6 +17,8 @@ import { AppHeader } from "@/components/layout/app-header";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
   return (
@@ -118,14 +122,42 @@ function AppLayout() {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const isAuthShell = pathname === "/login";
+  const isAuthShell =
+    pathname === "/login" || pathname === "/signup" || pathname === "/reset-password";
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      queryClient.invalidateQueries();
+    });
+    return () => subscription.unsubscribe();
+  }, [queryClient]);
 
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        {isAuthShell ? <Outlet /> : <AppLayout />}
-        <Toaster />
+        <AuthProvider>
+          {isAuthShell ? <Outlet /> : <AuthGuard><AppLayout /></AuthGuard>}
+          <Toaster />
+        </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
+}
+
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!loading && !user) navigate({ to: "/login", replace: true });
+  }, [user, loading, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-sm text-muted-foreground">Carregando…</div>
+      </div>
+    );
+  }
+  if (!user) return null;
+  return <>{children}</>;
 }

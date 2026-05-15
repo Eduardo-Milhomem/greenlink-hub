@@ -1,8 +1,12 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { useAuth } from "@/contexts/AuthContext";
+import { lovable } from "@/integrations/lovable";
+import { toast } from "sonner";
 import logoFull from "@/assets/greenlink-full.png";
 
 export const Route = createFileRoute("/login")({
@@ -12,6 +16,36 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
+  const { signIn, user } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (user) navigate({ to: "/dashboard", replace: true });
+  }, [user, navigate]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    const { error } = await signIn(email, password);
+    setSubmitting(false);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      navigate({ to: "/dashboard", replace: true });
+    }
+  }
+
+  async function handleGoogle() {
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
+    });
+    if (result.error) toast.error(result.error.message);
+    if (result.redirected) return;
+    if (!result.error) navigate({ to: "/dashboard", replace: true });
+  }
+
   return (
     <div className="min-h-screen grid md:grid-cols-2">
       <div className="hidden md:flex flex-col justify-between p-10 bg-gradient-to-br from-primary to-primary-glow text-primary-foreground">
@@ -31,27 +65,25 @@ function LoginPage() {
           <img src={logoFull} alt="GreenLink" className="h-8 mb-6 md:hidden" />
           <h1 className="text-2xl font-bold">Entrar</h1>
           <p className="text-sm text-muted-foreground mt-1">Acesse o painel administrativo.</p>
-          <form
-            className="mt-6 space-y-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              navigate({ to: "/dashboard" });
-            }}
-          >
+          <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-1.5">
               <Label htmlFor="email">E-mail</Label>
-              <Input id="email" type="email" defaultValue="admin@greenlink.com" />
+              <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="senha">Senha</Label>
-              <Input id="senha" type="password" defaultValue="••••••••" />
+              <Input id="senha" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
-            <Button type="submit" className="w-full">
-              Entrar
+            <Button type="submit" className="w-full" disabled={submitting}>
+              {submitting ? "Entrando…" : "Entrar"}
             </Button>
-            <p className="text-xs text-center text-muted-foreground">
-              Demo — qualquer credencial funciona.
-            </p>
+            <Button type="button" variant="outline" className="w-full" onClick={handleGoogle}>
+              Entrar com Google
+            </Button>
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <Link to="/signup" className="hover:underline">Criar conta</Link>
+              <Link to="/reset-password" className="hover:underline">Esqueci a senha</Link>
+            </div>
           </form>
         </Card>
       </div>
