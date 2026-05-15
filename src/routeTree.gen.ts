@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SuporteRouteImport } from './routes/suporte'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as PedidosRouteImport } from './routes/pedidos'
 import { Route as OsRouteImport } from './routes/os'
@@ -37,6 +38,11 @@ import { Route as AtivosIdRouteImport } from './routes/ativos.$id'
 const SuporteRoute = SuporteRouteImport.update({
   id: '/suporte',
   path: '/suporte',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PipelineRoute = PipelineRouteImport.update({
@@ -171,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/os': typeof OsRouteWithChildren
   '/pedidos': typeof PedidosRouteWithChildren
   '/pipeline': typeof PipelineRoute
+  '/signup': typeof SignupRoute
   '/suporte': typeof SuporteRouteWithChildren
   '/ativos/$id': typeof AtivosIdRoute
   '/clientes/$id': typeof ClientesIdRoute
@@ -197,6 +204,7 @@ export interface FileRoutesByTo {
   '/os': typeof OsRouteWithChildren
   '/pedidos': typeof PedidosRouteWithChildren
   '/pipeline': typeof PipelineRoute
+  '/signup': typeof SignupRoute
   '/suporte': typeof SuporteRouteWithChildren
   '/ativos/$id': typeof AtivosIdRoute
   '/clientes/$id': typeof ClientesIdRoute
@@ -224,6 +232,7 @@ export interface FileRoutesById {
   '/os': typeof OsRouteWithChildren
   '/pedidos': typeof PedidosRouteWithChildren
   '/pipeline': typeof PipelineRoute
+  '/signup': typeof SignupRoute
   '/suporte': typeof SuporteRouteWithChildren
   '/ativos/$id': typeof AtivosIdRoute
   '/clientes/$id': typeof ClientesIdRoute
@@ -252,6 +261,7 @@ export interface FileRouteTypes {
     | '/os'
     | '/pedidos'
     | '/pipeline'
+    | '/signup'
     | '/suporte'
     | '/ativos/$id'
     | '/clientes/$id'
@@ -278,6 +288,7 @@ export interface FileRouteTypes {
     | '/os'
     | '/pedidos'
     | '/pipeline'
+    | '/signup'
     | '/suporte'
     | '/ativos/$id'
     | '/clientes/$id'
@@ -304,6 +315,7 @@ export interface FileRouteTypes {
     | '/os'
     | '/pedidos'
     | '/pipeline'
+    | '/signup'
     | '/suporte'
     | '/ativos/$id'
     | '/clientes/$id'
@@ -331,6 +343,7 @@ export interface RootRouteChildren {
   OsRoute: typeof OsRouteWithChildren
   PedidosRoute: typeof PedidosRouteWithChildren
   PipelineRoute: typeof PipelineRoute
+  SignupRoute: typeof SignupRoute
   SuporteRoute: typeof SuporteRouteWithChildren
 }
 
@@ -341,6 +354,13 @@ declare module '@tanstack/react-router' {
       path: '/suporte'
       fullPath: '/suporte'
       preLoaderRoute: typeof SuporteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pipeline': {
@@ -604,6 +624,7 @@ const rootRouteChildren: RootRouteChildren = {
   OsRoute: OsRouteWithChildren,
   PedidosRoute: PedidosRouteWithChildren,
   PipelineRoute: PipelineRoute,
+  SignupRoute: SignupRoute,
   SuporteRoute: SuporteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
