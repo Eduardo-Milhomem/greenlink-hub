@@ -1,136 +1,142 @@
-import { useAppStore } from "@/lib/mock/store";
-import {
-  Contract,
-  type ContractItem,
-  type ContractType,
-  type ContractStatus,
-  type BillingFrequency,
-} from "@/types/contract";
-import type {
-  ContratoTipo,
-  ContratoStatus as MockContratoStatus,
-  ContratoFrequencia,
-  ContratoIndexador,
-} from "@/lib/mock/types";
+import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
+import type { Contract, ContractItem } from "@/types/contract";
 
-const contratoTipoToDomain: Record<ContratoTipo, ContractType> = {
-  venda_instalacao: "sale_installation",
-  locacao: "rental",
-  assinatura: "subscription",
-  suporte: "support",
-  misto: "mixed",
-};
+type ContractRow = Database["public"]["Tables"]["contracts"]["Row"];
+type ContractInsert = Database["public"]["Tables"]["contracts"]["Insert"];
+type ContractUpdate = Database["public"]["Tables"]["contracts"]["Update"];
+type ContractItemRow = Database["public"]["Tables"]["contract_items"]["Row"];
+type ContractItemInsert = Database["public"]["Tables"]["contract_items"]["Insert"];
 
-const domainToContratoTipo: Record<ContractType, ContratoTipo> = {
-  sale_installation: "venda_instalacao",
-  rental: "locacao",
-  subscription: "assinatura",
-  support: "suporte",
-  mixed: "misto",
-};
+const mapContractItem = (row: ContractItemRow): ContractItem => ({
+  id: row.id,
+  contractId: row.contract_id,
+  catalogItemId: row.catalog_item_id ?? undefined,
+  description: row.description,
+  quantity: Number(row.quantity) || 0,
+  unitPrice: Number(row.unit_price) || 0,
+  billingFrequency: row.billing_frequency ?? undefined,
+  startDate: row.start_date ?? undefined,
+  endDate: row.end_date ?? undefined,
+  isRecurring: !!row.is_recurring,
+});
 
-const contratoStatusToDomain: Record<MockContratoStatus, ContractStatus> = {
-  ativo: "active",
-  suspenso: "suspended",
-  encerrado: "expired",
-};
+const mapContract = (
+  row: ContractRow & { contract_items?: ContractItemRow[] | null },
+): Contract => ({
+  id: row.id,
+  contractNumber: row.contract_number,
+  customerId: row.customer_id,
+  orderId: row.order_id ?? undefined,
+  contractType: row.contract_type,
+  status: row.status,
+  startDate: row.start_date,
+  endDate: row.end_date ?? undefined,
+  billingFrequency: row.billing_frequency ?? undefined,
+  monthlyAmount: Number(row.monthly_amount) || 0,
+  priceIndexer: row.price_indexer ?? undefined,
+  autoRenew: !!row.auto_renew,
+  notes: row.notes ?? undefined,
+  createdBy: row.created_by ?? undefined,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  items: (row.contract_items ?? []).map(mapContractItem),
+});
 
-const domainToContratoStatus: Record<ContractStatus, MockContratoStatus> = {
-  draft: "ativo",
-  active: "ativo",
-  suspended: "suspenso",
-  expired: "encerrado",
-  cancelled: "encerrado",
-};
-
-const contratoFreqToDomain: Record<ContratoFrequencia, BillingFrequency> = {
-  unica: "one_time",
-  mensal: "monthly",
-  trimestral: "quarterly",
-  semestral: "semiannual",
-  anual: "annual",
-};
-
-const domainToContratoFreq: Record<BillingFrequency, ContratoFrequencia> = {
-  one_time: "unica",
-  monthly: "mensal",
-  quarterly: "trimestral",
-  semiannual: "semestral",
-  annual: "anual",
-};
-
-const isContratoIndexador = (v: string | undefined): v is ContratoIndexador =>
-  v === "ipca" || v === "igpm" || v === "fixo";
+const buildContractPayload = (data: Partial<Contract>): ContractInsert | ContractUpdate => ({
+  contract_number: data.contractNumber,
+  customer_id: data.customerId,
+  order_id: data.orderId ?? null,
+  contract_type: data.contractType,
+  status: data.status,
+  start_date: data.startDate,
+  end_date: data.endDate ?? null,
+  billing_frequency: data.billingFrequency,
+  monthly_amount: data.monthlyAmount,
+  price_indexer: data.priceIndexer ?? null,
+  auto_renew: data.autoRenew,
+  notes: data.notes ?? null,
+});
 
 export const contractService = {
   list: async (): Promise<Contract[]> => {
-    const contracts = useAppStore.getState().contratos;
-    return contracts.map((c) => ({
-      id: c.id,
-      contractNumber: c.numero,
-      customerId: c.clienteId,
-      orderId: c.pedidoId,
-      contractType: contratoTipoToDomain[c.tipo],
-      status: contratoStatusToDomain[c.status],
-      startDate: c.inicio,
-      endDate: c.fim,
-      billingFrequency: contratoFreqToDomain[c.frequencia],
-      monthlyAmount: c.valorMensal,
-      priceIndexer: c.indexador,
-      autoRenew: false,
-      notes: c.descricao,
-      createdAt: c.criadoEm,
-      updatedAt: c.criadoEm,
-      items: [],
-    }));
+    const { data, error } = await supabase
+      .from("contracts")
+      .select("*, contract_items(*)")
+      .order("updated_at", { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map((row) => mapContract(row as any));
   },
 
   get: async (id: string): Promise<Contract | undefined> => {
-    const contracts = await contractService.list();
-    return contracts.find((c) => c.id === id);
+    const { data, error } = await supabase
+      .from("contracts")
+      .select("*, contract_items(*)")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? mapContract(data as any) : undefined;
   },
 
   create: async (data: Partial<Contract>) => {
-    const addContrato = useAppStore.getState().addContrato;
-    addContrato({
-      clienteId: data.customerId!,
-      pedidoId: data.orderId,
-      inicio: data.startDate!,
-      fim: data.endDate!,
-      valorMensal: data.monthlyAmount || 0,
-      indexador: isContratoIndexador(data.priceIndexer) ? data.priceIndexer : "fixo",
-      tipo: data.contractType ? domainToContratoTipo[data.contractType] : "locacao",
-      frequencia: data.billingFrequency ? domainToContratoFreq[data.billingFrequency] : "mensal",
-      status: data.status ? domainToContratoStatus[data.status] : "ativo",
-      descricao: data.notes,
-    });
+    const { data: created, error } = await supabase
+      .from("contracts")
+      .insert({
+        contract_number: data.contractNumber!,
+        customer_id: data.customerId!,
+        order_id: data.orderId ?? null,
+        contract_type: data.contractType ?? "subscription",
+        status: data.status ?? "draft",
+        start_date: data.startDate!,
+        end_date: data.endDate ?? null,
+        billing_frequency: data.billingFrequency ?? "monthly",
+        monthly_amount: data.monthlyAmount ?? 0,
+        price_indexer: data.priceIndexer ?? null,
+        auto_renew: data.autoRenew ?? false,
+        notes: data.notes ?? null,
+      })
+      .select("*, contract_items(*)")
+      .single();
+    if (error) throw error;
+    return mapContract(created as any);
   },
 
   update: async (id: string, data: Partial<Contract>) => {
-    const updateContrato = useAppStore.getState().updateContrato;
-    updateContrato(id, {
-      numero: data.contractNumber,
-      clienteId: data.customerId,
-      pedidoId: data.orderId,
-      inicio: data.startDate,
-      fim: data.endDate,
-      valorMensal: data.monthlyAmount,
-      indexador: isContratoIndexador(data.priceIndexer) ? data.priceIndexer : undefined,
-      tipo: data.contractType ? domainToContratoTipo[data.contractType] : undefined,
-      frequencia: data.billingFrequency ? domainToContratoFreq[data.billingFrequency] : undefined,
-      status: data.status ? domainToContratoStatus[data.status] : undefined,
-      descricao: data.notes,
-    });
+    const { data: updated, error } = await supabase
+      .from("contracts")
+      .update(buildContractPayload(data))
+      .eq("id", id)
+      .select("*, contract_items(*)")
+      .single();
+    if (error) throw error;
+    return mapContract(updated as any);
   },
 
   remove: async (id: string) => {
-    const removeContrato = useAppStore.getState().removeContrato;
-    removeContrato(id);
+    const { error } = await supabase.from("contracts").delete().eq("id", id);
+    if (error) throw error;
   },
 
   bill: async (id: string) => {
-    const faturar = useAppStore.getState().faturarContrato;
-    faturar(id);
+    const { data: contract, error } = await supabase.from("contracts").select("*").eq("id", id).single();
+    if (error) throw error;
+
+    const due = new Date();
+    due.setDate(due.getDate() + 7);
+
+    const { error: receivableError } = await supabase.from("receivables").insert({
+      description: `Contrato ${contract.contract_number}`,
+      customer_id: contract.customer_id,
+      contract_id: contract.id,
+      issue_date: new Date().toISOString().slice(0, 10),
+      due_date: due.toISOString().slice(0, 10),
+      amount: contract.monthly_amount,
+      open_amount: contract.monthly_amount,
+      status: "open",
+      origin_type: "contract",
+      origin_id: contract.id,
+    });
+    if (receivableError) throw receivableError;
   },
 
   /**
@@ -138,32 +144,48 @@ export const contractService = {
    * foram faturados no mês de referência.
    */
   processBatchBilling: async (monthRef: string): Promise<number> => {
-    const store = useAppStore.getState();
-    const activeContracts = store.contratos.filter((c) => c.status === "ativo");
+    const { data: activeContracts, error } = await supabase
+      .from("contracts")
+      .select("*")
+      .eq("status", "active");
+    if (error) throw error;
+
+    const { data: existing, error: existingError } = await supabase
+      .from("receivables")
+      .select("contract_id, issue_date")
+      .like("issue_date", `${monthRef}%`);
+    if (existingError) throw existingError;
+
+    const billed = new Set((existing ?? []).map((r) => r.contract_id).filter(Boolean));
     let count = 0;
-
-    activeContracts.forEach((ct) => {
-      // Verifica se já existe um lançamento para este contrato neste mês de referência
-      const alreadyBilled = store.lancamentos.some(
-        (l) => l.contratoId === ct.id && l.vencimento.startsWith(monthRef),
-      );
-
-      if (!alreadyBilled) {
-        store.faturarContrato(ct.id);
-        count++;
-      }
-    });
-
+    for (const ct of activeContracts ?? []) {
+      if (billed.has(ct.id)) continue;
+      await contractService.bill(ct.id);
+      count++;
+    }
     return count;
   },
 
   listItems: async (contractId: string): Promise<ContractItem[]> => {
-    // Simulando itens de contrato que hoje não existem no mock centralizado
-    // Em um backend real, haveria uma tabela contract_items
-    return [];
+    const { data, error } = await supabase.from("contract_items").select("*").eq("contract_id", contractId);
+    if (error) throw error;
+    return (data ?? []).map(mapContractItem);
   },
 
   addItems: async (contractId: string, items: ContractItem[]) => {
-    console.log("Add items to contract", contractId, items);
+    const payload: ContractItemInsert[] = items.map((i) => ({
+      contract_id: contractId,
+      catalog_item_id: i.catalogItemId ?? null,
+      description: i.description,
+      quantity: i.quantity,
+      unit_price: i.unitPrice,
+      billing_frequency: i.billingFrequency ?? null,
+      start_date: i.startDate ?? null,
+      end_date: i.endDate ?? null,
+      is_recurring: i.isRecurring,
+    }));
+
+    const { error } = await supabase.from("contract_items").insert(payload);
+    if (error) throw error;
   },
 };

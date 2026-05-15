@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/table";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 import { useContracts, useCustomers, useCreateContract } from "@/hooks/domain";
-import { formatBRL, formatDate } from "@/lib/mock/store";
+import { formatBRL, formatDate } from "@/lib/formatters";
 import type { ContractType, BillingFrequency, ContractStatus } from "@/types/contract";
 import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";

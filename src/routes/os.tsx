@@ -23,7 +23,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 import { useServiceOrders, useCustomers, useCreateServiceOrder } from "@/hooks/domain";
-import { formatDate } from "@/lib/mock/store";
+import { formatDate } from "@/lib/formatters";
 import { Plus, MapPin, Clock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { ServiceOrderStatus, ServicePriority } from "@/types/serviceOrder";

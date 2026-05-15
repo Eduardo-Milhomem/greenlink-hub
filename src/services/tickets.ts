@@ -1,110 +1,164 @@
-import { useAppStore } from "@/lib/mock/store";
-import { SupportTicket, type TicketPriority, type TicketStatus } from "@/types/ticket";
-import type {
-  TicketPrioridade,
-  TicketStatus as MockTicketStatus,
-  TicketCanal,
-} from "@/lib/mock/types";
+import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
+import type { SupportTicket, TicketMessage, TicketPriority, TicketStatus } from "@/types/ticket";
 
-const prioridadeToDomain: Record<TicketPrioridade, TicketPriority> = {
-  baixa: "low",
-  media: "medium",
-  alta: "high",
-  critica: "urgent",
-};
+type TicketRow = Database["public"]["Tables"]["support_tickets"]["Row"];
+type TicketInsert = Database["public"]["Tables"]["support_tickets"]["Insert"];
+type TicketUpdate = Database["public"]["Tables"]["support_tickets"]["Update"];
+type TicketMessageRow = Database["public"]["Tables"]["ticket_messages"]["Row"];
 
-const domainToPrioridade: Record<TicketPriority, TicketPrioridade> = {
-  low: "baixa",
-  medium: "media",
-  high: "alta",
-  urgent: "critica",
-};
+const mapMessage = (row: TicketMessageRow): TicketMessage => ({
+  id: row.id,
+  ticketId: row.ticket_id,
+  authorUserId: row.author_user_id ?? undefined,
+  authorContactId: undefined,
+  isInternal: !!row.is_internal,
+  body: row.body,
+  createdAt: row.created_at,
+});
 
-const statusToDomain: Record<MockTicketStatus, Exclude<TicketStatus, "cancelled">> = {
-  novo: "new",
-  andamento: "in_progress",
-  aguardando: "waiting_customer",
-  resolvido: "resolved",
-};
+const mapTicket = (row: TicketRow & { ticket_messages?: TicketMessageRow[] | null }): SupportTicket => ({
+  id: row.id,
+  ticketNumber: row.ticket_number,
+  customerId: row.customer_id,
+  contractId: row.contract_id ?? undefined,
+  assetId: row.asset_id ?? undefined,
+  channel: row.channel ?? undefined,
+  subject: row.subject,
+  description: row.description ?? undefined,
+  category: row.category ?? undefined,
+  priority: row.priority,
+  status: row.status,
+  slaDueAt: row.sla_due_at ?? undefined,
+  assignedTo: row.assigned_to ?? undefined,
+  openedByContactId: undefined,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  resolvedAt: row.resolved_at ?? undefined,
+  messages: (row.ticket_messages ?? []).map(mapMessage),
+});
 
-const domainToStatus: Record<TicketStatus, MockTicketStatus> = {
-  new: "novo",
-  in_progress: "andamento",
-  waiting_customer: "aguardando",
-  resolved: "resolvido",
-  cancelled: "resolvido",
-};
-
-const isTicketCanal = (v: string | undefined): v is TicketCanal =>
-  v === "email" || v === "whatsapp" || v === "portal" || v === "telefone";
+const buildTicketPayload = (data: Partial<SupportTicket>): TicketInsert | TicketUpdate => ({
+  ticket_number: data.ticketNumber,
+  customer_id: data.customerId,
+  contract_id: data.contractId ?? null,
+  asset_id: data.assetId ?? null,
+  channel: data.channel ?? null,
+  subject: data.subject,
+  description: data.description ?? null,
+  category: data.category ?? null,
+  priority: data.priority as TicketPriority,
+  status: data.status as TicketStatus,
+  sla_due_at: data.slaDueAt ?? null,
+  assigned_to: data.assignedTo ?? null,
+  resolved_at: data.resolvedAt ?? null,
+});
 
 export const ticketService = {
   list: async (): Promise<SupportTicket[]> => {
-    const tickets = useAppStore.getState().tickets;
-    return tickets.map((t) => ({
-      id: t.id,
-      ticketNumber: t.numero,
-      customerId: t.clienteId,
-      subject: t.assunto,
-      channel: t.canal,
-      priority: prioridadeToDomain[t.prioridade],
-      status: statusToDomain[t.status],
-      slaDueAt: t.sla,
-      createdAt: t.criadoEm,
-      updatedAt: t.criadoEm,
-      messages: t.mensagens.map((m) => ({
-        id: m.id,
-        ticketId: t.id,
-        isInternal: m.interno,
-        body: m.texto,
-        createdAt: m.criadoEm,
-        authorUserId: m.autor,
-      })),
-    }));
+    const { data, error } = await supabase
+      .from("support_tickets")
+      .select("*, ticket_messages(*)")
+      .order("updated_at", { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map((row) => mapTicket(row as any));
   },
 
   get: async (id: string): Promise<SupportTicket | undefined> => {
-    const tickets = await ticketService.list();
-    return tickets.find((t) => t.id === id);
+    const { data, error } = await supabase
+      .from("support_tickets")
+      .select("*, ticket_messages(*)")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? mapTicket(data as any) : undefined;
   },
 
   create: async (data: Partial<SupportTicket>) => {
-    const addTicket = useAppStore.getState().addTicket;
-    addTicket({
-      assunto: data.subject!,
-      clienteId: data.customerId!,
-      canal: isTicketCanal(data.channel) ? data.channel : "portal",
-      prioridade: data.priority ? domainToPrioridade[data.priority] : "media",
-      status: data.status ? domainToStatus[data.status] : "novo",
-      sla: data.slaDueAt,
-      mensagens: [],
-    });
+    const now = new Date();
+    const ticketNumber =
+      data.ticketNumber ??
+      `TK-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${Math.random().toString(16).slice(2, 6).toUpperCase()}`;
+
+    const { data: created, error } = await supabase
+      .from("support_tickets")
+      .insert({
+        ticket_number: ticketNumber,
+        customer_id: data.customerId!,
+        contract_id: data.contractId ?? null,
+        asset_id: data.assetId ?? null,
+        channel: data.channel ?? "portal",
+        subject: data.subject!,
+        description: data.description ?? null,
+        category: data.category ?? null,
+        priority: data.priority ?? "medium",
+        status: data.status ?? "new",
+        sla_due_at: data.slaDueAt ?? null,
+        assigned_to: data.assignedTo ?? null,
+      })
+      .select("*, ticket_messages(*)")
+      .single();
+    if (error) throw error;
+    return mapTicket(created as any);
   },
 
   update: async (id: string, data: Partial<SupportTicket>) => {
-    const updateTicket = useAppStore.getState().updateTicket;
-    updateTicket(id, {
-      assunto: data.subject,
-      clienteId: data.customerId,
-      canal: isTicketCanal(data.channel) ? data.channel : undefined,
-      prioridade: data.priority ? domainToPrioridade[data.priority] : undefined,
-      status: data.status ? domainToStatus[data.status] : undefined,
-      sla: data.slaDueAt,
-    });
+    const { data: updated, error } = await supabase
+      .from("support_tickets")
+      .update(buildTicketPayload(data))
+      .eq("id", id)
+      .select("*, ticket_messages(*)")
+      .single();
+    if (error) throw error;
+    return mapTicket(updated as any);
   },
 
   addMessage: async (ticketId: string, author: string, text: string, internal: boolean = false) => {
-    const addMessage = useAppStore.getState().addMensagemTicket;
-    addMessage(ticketId, { autor: author, texto: text, interno: internal });
+    const { data, error } = await supabase
+      .from("ticket_messages")
+      .insert({
+        ticket_id: ticketId,
+        author_user_id: author,
+        is_internal: internal,
+        body: text,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return mapMessage(data);
   },
 
   toServiceOrder: async (ticketId: string) => {
-    const toOS = useAppStore.getState().ticketParaOS;
-    toOS(ticketId);
+    const ticket = await ticketService.get(ticketId);
+    if (!ticket) throw new Error("Ticket não encontrado");
+
+    const now = new Date();
+    const osNumber =
+      `OS-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${Math.random().toString(16).slice(2, 6).toUpperCase()}`;
+
+    const { data: os, error } = await supabase
+      .from("service_orders")
+      .insert({
+        os_number: osNumber,
+        customer_id: ticket.customerId,
+        contract_id: ticket.contractId ?? null,
+        asset_id: ticket.assetId ?? null,
+        ticket_id: ticket.id,
+        service_type: "support",
+        priority: ticket.priority,
+        status: "open",
+        description: ticket.subject,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+
+    await supabase.from("support_tickets").update({ status: "in_progress" }).eq("id", ticket.id);
+    return os;
   },
 
   remove: async (id: string) => {
-    const remove = useAppStore.getState().removeTicket;
-    remove(id);
+    const { error } = await supabase.from("support_tickets").delete().eq("id", id);
+    if (error) throw error;
   },
 };

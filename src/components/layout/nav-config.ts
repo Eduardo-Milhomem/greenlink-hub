@@ -51,7 +51,13 @@ export const navGroups: NavGroup[] = [
       { title: "Suporte", url: "/suporte", icon: LifeBuoy },
     ],
   },
-  { label: "Sistema", items: [{ title: "Configurações", url: "/configuracoes", icon: Settings }] },
+  {
+    label: "Sistema",
+    items: [
+      { title: "Configurações", url: "/configuracoes", icon: Settings },
+      { title: "Usuários", url: "/admin/usuarios", icon: Users },
+    ],
+  },
 ];
 
 export const bottomNav: NavItem[] = [

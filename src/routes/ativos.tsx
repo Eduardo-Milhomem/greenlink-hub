@@ -29,8 +29,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageContainer, PageHeader } from "@/components/layout/page";
-import { useAppStore, formatDate } from "@/lib/mock/store";
-import type { AtivoStatus } from "@/lib/mock/types";
+import { useAssets, useCreateAsset, useCustomers, useServiceOrders, useUpdateAsset } from "@/hooks/domain";
+import { formatDate } from "@/lib/formatters";
+import type { AssetStatus } from "@/types/asset";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -40,7 +41,11 @@ export const Route = createFileRoute("/ativos")({
 });
 
 function AtivosPage() {
-  const { ativos, clientes, ordens, addAtivo, updateAtivo } = useAppStore();
+  const { data: ativos = [] } = useAssets();
+  const { data: clientes = [] } = useCustomers();
+  const { data: ordens = [] } = useServiceOrders();
+  const createAsset = useCreateAsset();
+  const updateAsset = useUpdateAsset();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     tag: "",
@@ -48,25 +53,53 @@ function AtivosPage() {
     tipo: "Sensor",
     clienteId: "",
     localizacao: "",
-    status: "ativo" as AtivoStatus,
+    status: "ativo" as "ativo" | "manutencao" | "baixado",
   });
 
-  const submit = () => {
+  const statusToAssetStatus: Record<typeof form.status, AssetStatus> = {
+    ativo: "installed",
+    manutencao: "maintenance",
+    baixado: "inactive",
+  };
+
+  const assetStatusToUi: Partial<Record<AssetStatus, typeof form.status>> = {
+    installed: "ativo",
+    maintenance: "manutencao",
+    inactive: "baixado",
+    available: "ativo",
+    reserved: "ativo",
+    rented: "ativo",
+    returned: "ativo",
+  };
+
+  const submit = async () => {
     if (!form.tag || !form.modelo) {
       toast.error("Preencha tag e modelo.");
       return;
     }
-    addAtivo({ ...form, clienteId: form.clienteId || undefined });
-    toast.success("Ativo cadastrado.");
-    setOpen(false);
-    setForm({
-      tag: "",
-      modelo: "",
-      tipo: "Sensor",
-      clienteId: "",
-      localizacao: "",
-      status: "ativo",
-    });
+    try {
+      await createAsset.mutateAsync({
+        assetTag: form.tag,
+        serialNumber: form.modelo,
+        ownerType: "greenlink",
+        customerId: form.clienteId || undefined,
+        siteName: form.localizacao || undefined,
+        status: statusToAssetStatus[form.status],
+        notes: form.tipo ? `Tipo: ${form.tipo}` : undefined,
+      });
+      toast.success("Ativo cadastrado.");
+      setOpen(false);
+      setForm({
+        tag: "",
+        modelo: "",
+        tipo: "Sensor",
+        clienteId: "",
+        localizacao: "",
+        status: "ativo",
+      });
+    } catch (e) {
+      toast.error("Erro ao cadastrar ativo.");
+    }
   };
 
   return (
@@ -129,7 +162,7 @@ function AtivosPage() {
                     <SelectContent>
                       {clientes.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
-                          {c.nome}
+                          {c.legalName}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -163,13 +196,13 @@ function AtivosPage() {
               className="block rounded-lg border p-3 hover:bg-muted"
             >
               <div className="flex items-center justify-between">
-                <p className="font-medium">{a.tag}</p>
-                <Badge variant="outline">{a.status}</Badge>
+                <p className="font-medium">{a.assetTag}</p>
+                <Badge variant="outline">{assetStatusToUi[a.status] ?? a.status}</Badge>
               </div>
-              <p className="text-xs text-muted-foreground">{a.modelo}</p>
+              <p className="text-xs text-muted-foreground">{a.serialNumber || "—"}</p>
               <p className="text-xs text-muted-foreground">
-                {clientes.find((c) => c.id === a.clienteId)?.nome ?? "Sem cliente"} ·{" "}
-                {a.localizacao ?? "—"}
+                {clientes.find((c) => c.id === a.customerId)?.legalName ?? "Sem cliente"} ·{" "}
+                {a.siteName ?? "—"}
               </p>
             </Link>
           ))}
@@ -190,27 +223,36 @@ function AtivosPage() {
             </TableHeader>
             <TableBody>
               {ativos.map((a) => {
-                const osCount = ordens.filter((o) => o.ativosIds.includes(a.id)).length;
+                const osCount = ordens.filter((o) => o.assetId === a.id).length;
                 return (
                   <TableRow key={a.id}>
                     <TableCell className="font-medium">
                       <Link to="/ativos/$id" params={{ id: a.id }} className="hover:text-primary">
-                        {a.tag}
+                        {a.assetTag}
                       </Link>
                     </TableCell>
-                    <TableCell>{a.modelo}</TableCell>
-                    <TableCell className="text-muted-foreground">{a.tipo}</TableCell>
+                    <TableCell>{a.serialNumber || "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{a.ownerType}</TableCell>
                     <TableCell className="text-muted-foreground">
-                      {clientes.find((c) => c.id === a.clienteId)?.nome ?? "—"}
+                      {clientes.find((c) => c.id === a.customerId)?.legalName ?? "—"}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{a.localizacao ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{a.siteName ?? "—"}</TableCell>
                     <TableCell className="text-muted-foreground">
-                      {formatDate(a.ultimaLeitura)}
+                      {formatDate(a.lastReadingAt)}
                     </TableCell>
                     <TableCell>
                       <Select
-                        value={a.status}
-                        onValueChange={(v) => updateAtivo(a.id, { status: v as AtivoStatus })}
+                        value={assetStatusToUi[a.status] ?? "ativo"}
+                        onValueChange={async (v) => {
+                          try {
+                            await updateAsset.mutateAsync({
+                              id: a.id,
+                              data: { status: statusToAssetStatus[v as any] },
+                            });
+                          } catch (e) {
+                            toast.error("Erro ao atualizar status");
+                          }
+                        }}
                       >
                         <SelectTrigger className="h-7 w-32">
                           <SelectValue />

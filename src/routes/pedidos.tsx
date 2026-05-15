@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 import { useOrders, useCustomers } from "@/hooks/domain";
-import { formatBRL, formatDate } from "@/lib/mock/store";
+import { formatBRL, formatDate } from "@/lib/formatters";
 import { Loader2 } from "lucide-react";
 import type { OrderStatus } from "@/types/order";
 

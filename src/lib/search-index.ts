@@ -1,30 +1,30 @@
 import type {
-  Ativo,
-  Cliente,
-  Contrato,
+  Customer,
   Lead,
-  Oportunidade,
-  Orcamento,
-  Pedido,
-  OS,
-  Ticket,
-  ItemCatalogo,
-} from "@/lib/mock/types";
+  Opportunity,
+  Quote,
+  CustomerOrder,
+  Contract,
+  ServiceOrder,
+  Asset,
+  SupportTicket,
+  CatalogItem,
+} from "@/types";
 import type { GlobalSearchItem } from "@/lib/search";
 
 export function buildGlobalSearchIndex(input: {
-  clientes: Cliente[];
+  clientes: Customer[];
   leads: Lead[];
-  oportunidades: Oportunidade[];
-  orcamentos: Orcamento[];
-  pedidos: Pedido[];
-  contratos: Contrato[];
-  ordens: OS[];
-  ativos: Ativo[];
-  tickets: Ticket[];
-  catalogo: ItemCatalogo[];
+  oportunidades: Opportunity[];
+  orcamentos: Quote[];
+  pedidos: CustomerOrder[];
+  contratos: Contract[];
+  ordens: ServiceOrder[];
+  ativos: Asset[];
+  tickets: SupportTicket[];
+  catalogo: CatalogItem[];
 }) {
-  const clienteNome = new Map(input.clientes.map((c) => [c.id, c.nome]));
+  const clienteNome = new Map(input.clientes.map((c) => [c.id, c.legalName]));
 
   const items: GlobalSearchItem[] = [];
 
@@ -32,11 +32,11 @@ export function buildGlobalSearchIndex(input: {
     items.push({
       kind: "cliente",
       id: c.id,
-      title: c.nome,
-      subtitle: [c.documento, [c.cidade, c.estado].filter(Boolean).join("/")]
+      title: c.legalName,
+      subtitle: [c.documentNumber, [c.city, c.state].filter(Boolean).join("/")]
         .filter(Boolean)
         .join(" · "),
-      keywords: [c.email, c.telefone].filter(Boolean) as string[],
+      keywords: [c.email, c.phone].filter(Boolean) as string[],
       target: { to: "/clientes/$id", params: { id: c.id } },
     });
   }
@@ -45,9 +45,9 @@ export function buildGlobalSearchIndex(input: {
     items.push({
       kind: "lead",
       id: l.id,
-      title: l.nome,
-      subtitle: [l.empresa ?? "Pessoa física", l.origem, l.status].filter(Boolean).join(" · "),
-      keywords: [l.email, l.telefone].filter(Boolean) as string[],
+      title: l.name,
+      subtitle: [l.companyName ?? "Pessoa física", l.source, l.status].filter(Boolean).join(" · "),
+      keywords: [l.email, l.phone].filter(Boolean) as string[],
       target: { to: "/leads" },
     });
   }
@@ -56,9 +56,9 @@ export function buildGlobalSearchIndex(input: {
     items.push({
       kind: "oportunidade",
       id: o.id,
-      title: o.titulo,
-      subtitle: [clienteNome.get(o.clienteId) ?? "—", o.estagio].filter(Boolean).join(" · "),
-      keywords: [o.responsavel].filter(Boolean) as string[],
+      title: o.title,
+      subtitle: [clienteNome.get(o.customerId!) ?? "—", o.stage].filter(Boolean).join(" · "),
+      keywords: [o.assignedTo].filter(Boolean) as string[],
       target: { to: "/pipeline" },
     });
   }
@@ -67,9 +67,9 @@ export function buildGlobalSearchIndex(input: {
     items.push({
       kind: "orcamento",
       id: o.id,
-      title: o.numero,
-      subtitle: [clienteNome.get(o.clienteId) ?? "—", o.status].filter(Boolean).join(" · "),
-      keywords: o.itens.flatMap((i) => [i.codigo, i.nome]),
+      title: o.quoteNumber,
+      subtitle: [clienteNome.get(o.customerId) ?? "—", o.status].filter(Boolean).join(" · "),
+      keywords: o.items.flatMap((i) => [i.itemDescription]),
       target: { to: "/orcamentos/$id", params: { id: o.id } },
     });
   }
@@ -78,8 +78,8 @@ export function buildGlobalSearchIndex(input: {
     items.push({
       kind: "pedido",
       id: p.id,
-      title: p.numero,
-      subtitle: [clienteNome.get(p.clienteId) ?? "—", p.status].filter(Boolean).join(" · "),
+      title: p.orderNumber,
+      subtitle: [clienteNome.get(p.customerId) ?? "—", p.status].filter(Boolean).join(" · "),
       target: { to: "/pedidos/$id", params: { id: p.id } },
     });
   }
@@ -88,9 +88,9 @@ export function buildGlobalSearchIndex(input: {
     items.push({
       kind: "contrato",
       id: c.id,
-      title: c.numero,
-      subtitle: [clienteNome.get(c.clienteId) ?? "—", c.status].filter(Boolean).join(" · "),
-      keywords: [c.indexador, String(c.valorMensal)].filter(Boolean),
+      title: c.contractNumber,
+      subtitle: [clienteNome.get(c.customerId) ?? "—", c.status].filter(Boolean).join(" · "),
+      keywords: [c.priceIndexer, String(c.monthlyAmount)].filter(Boolean),
       target: { to: "/contratos/$id", params: { id: c.id } },
     });
   }
@@ -99,9 +99,9 @@ export function buildGlobalSearchIndex(input: {
     items.push({
       kind: "os",
       id: o.id,
-      title: o.numero,
-      subtitle: [o.titulo, clienteNome.get(o.clienteId) ?? "—"].filter(Boolean).join(" · "),
-      keywords: [o.tecnico, o.status, o.prioridade, o.endereco].filter(Boolean) as string[],
+      title: o.osNumber,
+      subtitle: [o.description, clienteNome.get(o.customerId) ?? "—"].filter(Boolean).join(" · "),
+      keywords: [o.assignedTo, o.status, o.priority].filter(Boolean) as string[],
       target: { to: "/os/$id", params: { id: o.id } },
     });
   }
@@ -110,9 +110,9 @@ export function buildGlobalSearchIndex(input: {
     items.push({
       kind: "ativo",
       id: a.id,
-      title: a.tag,
-      subtitle: [a.modelo, clienteNome.get(a.clienteId ?? "")].filter(Boolean).join(" · "),
-      keywords: [a.tipo, a.localizacao, a.status].filter(Boolean) as string[],
+      title: a.assetTag,
+      subtitle: [a.assetModelId, clienteNome.get(a.customerId ?? "")].filter(Boolean).join(" · "),
+      keywords: [a.catalogItemId, a.siteName, a.status].filter(Boolean) as string[],
       target: { to: "/ativos/$id", params: { id: a.id } },
     });
   }
@@ -121,9 +121,9 @@ export function buildGlobalSearchIndex(input: {
     items.push({
       kind: "ticket",
       id: t.id,
-      title: t.numero,
-      subtitle: [t.assunto, clienteNome.get(t.clienteId) ?? "—"].filter(Boolean).join(" · "),
-      keywords: [t.canal, t.status, t.prioridade].filter(Boolean),
+      title: t.ticketNumber,
+      subtitle: [t.subject, clienteNome.get(t.customerId) ?? "—"].filter(Boolean).join(" · "),
+      keywords: [t.channel, t.status, t.priority].filter(Boolean) as string[],
       target: { to: "/suporte/$id", params: { id: t.id } },
     });
   }
@@ -132,8 +132,8 @@ export function buildGlobalSearchIndex(input: {
     items.push({
       kind: "catalogo",
       id: i.id,
-      title: `${i.codigo} — ${i.nome}`,
-      subtitle: [i.tipo, i.ativo ? "ativo" : "inativo"].filter(Boolean).join(" · "),
+      title: `${i.itemCode} — ${i.name}`,
+      subtitle: [i.itemType, i.isActive ? "ativo" : "inativo"].filter(Boolean).join(" · "),
       target: { to: "/catalogo" },
     });
   }

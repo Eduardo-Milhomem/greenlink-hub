@@ -16,11 +16,13 @@ import { navGroups } from "./nav-config";
 import logoFull from "@/assets/greenlink-full.png";
 import logoMark from "@/assets/greenlink-mark.png";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { hasRole } = useAuth();
 
   return (
     <Sidebar collapsible="icon">
@@ -40,6 +42,7 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {group.items.map((item) => {
+                  if (item.url.startsWith("/admin") && !hasRole("admin")) return null;
                   const active = !item.soon && pathname.startsWith(item.url);
                   if (item.soon) {
                     return (

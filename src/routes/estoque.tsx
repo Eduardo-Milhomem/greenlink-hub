@@ -30,9 +30,10 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageContainer, PageHeader } from "@/components/layout/page";
-import { useAppStore, calcEstoque, formatDate } from "@/lib/mock/store";
-import type { MovTipo } from "@/lib/mock/types";
-import { Plus, AlertTriangle } from "lucide-react";
+import { formatDate } from "@/lib/formatters";
+import { useCatalog, useInventoryMovements, useServiceOrders } from "@/hooks/domain";
+import type { StockMovementType } from "@/types/inventory";
+import { Plus, AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/estoque")({
@@ -41,36 +42,54 @@ export const Route = createFileRoute("/estoque")({
 });
 
 const ESTOQUE_MIN_DEFAULT = 10;
-const minimoOf = (i: { estoqueMinimo?: number }) => i.estoqueMinimo ?? ESTOQUE_MIN_DEFAULT;
+const minimoOf = (i: { trackStock?: boolean }) => ESTOQUE_MIN_DEFAULT; // Mock
+
+function calcEstoque(itemId: string, movements: any[]) {
+  return movements
+    .filter((m) => m.catalogItemId === itemId)
+    .reduce((acc, m) => {
+      if (m.movementType === "in" || m.movementType === "production_in") return acc + m.quantity;
+      if (m.movementType === "out" || m.movementType === "consumption") return acc - m.quantity;
+      return acc;
+    }, 0);
+}
 
 function EstoquePage() {
-  const { catalogo, movimentacoes, ordens, addMovimentacao, updateItemCatalogo } = useAppStore();
-  const produtos = catalogo.filter((i) => i.tipo !== "servico");
+  const { data: catalogo = [], isLoading: isLoadingCatalog } = useCatalog();
+  const { data: movimentacoes = [], isLoading: isLoadingMovements } = useInventoryMovements();
+  const { data: ordens = [], isLoading: isLoadingOrders } = useServiceOrders();
+
+  const produtos = catalogo.filter((i) => i.itemType !== "service");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     itemId: "",
-    tipo: "entrada" as MovTipo,
+    tipo: "in" as StockMovementType,
     quantidade: "",
     motivo: "",
     osId: "",
   });
+
+  const isLoading = isLoadingCatalog || isLoadingMovements || isLoadingOrders;
 
   const submit = () => {
     if (!form.itemId || !form.quantidade) {
       toast.error("Preencha item e quantidade.");
       return;
     }
-    addMovimentacao({
-      itemId: form.itemId,
-      tipo: form.tipo,
-      quantidade: Number(form.quantidade),
-      motivo: form.motivo,
-      osId: form.osId || undefined,
-    });
-    toast.success("Movimentação registrada.");
+    toast.info("Lógica de movimentação em serviços.");
     setOpen(false);
-    setForm({ itemId: "", tipo: "entrada", quantidade: "", motivo: "", osId: "" });
+    setForm({ itemId: "", tipo: "in", quantidade: "", motivo: "", osId: "" });
   };
+
+  if (isLoading) {
+    return (
+      <PageContainer>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
+        </div>
+      </PageContainer>
+    );
+  }
 
   const criticos = produtos.filter((i) => calcEstoque(i.id, movimentacoes) < minimoOf(i));
 
@@ -104,7 +123,7 @@ function EstoquePage() {
                     <SelectContent>
                       {produtos.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
-                          {p.codigo} — {p.nome}
+                          {p.itemCode} — {p.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -115,16 +134,16 @@ function EstoquePage() {
                     <Label>Tipo</Label>
                     <Select
                       value={form.tipo}
-                      onValueChange={(v) => setForm({ ...form, tipo: v as MovTipo })}
+                      onValueChange={(v) => setForm({ ...form, tipo: v as StockMovementType })}
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="entrada">Entrada</SelectItem>
-                        <SelectItem value="saida">Saída</SelectItem>
-                        <SelectItem value="ajuste">Ajuste</SelectItem>
-                        <SelectItem value="reserva">Reserva</SelectItem>
+                        <SelectItem value="in">Entrada</SelectItem>
+                        <SelectItem value="out">Saída</SelectItem>
+                        <SelectItem value="adjustment">Ajuste</SelectItem>
+                        <SelectItem value="reservation">Reserva</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -137,7 +156,7 @@ function EstoquePage() {
                     />
                   </div>
                 </div>
-                {(form.tipo === "saida" || form.tipo === "reserva") && (
+                {(form.tipo === "out" || form.tipo === "reservation") && (
                   <div>
                     <Label>Vincular à OS (opcional)</Label>
                     <Select value={form.osId} onValueChange={(v) => setForm({ ...form, osId: v })}>
@@ -148,7 +167,7 @@ function EstoquePage() {
                         <SelectItem value="">Sem OS</SelectItem>
                         {ordens.map((o) => (
                           <SelectItem key={o.id} value={o.id}>
-                            {o.numero} — {o.titulo}
+                            {o.osNumber} — {o.description}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -199,9 +218,9 @@ function EstoquePage() {
                   const critico = saldo < min;
                   return (
                     <TableRow key={p.id} className={critico ? "bg-destructive/5" : undefined}>
-                      <TableCell className="font-mono text-xs">{p.codigo}</TableCell>
-                      <TableCell>{p.nome}</TableCell>
-                      <TableCell className="text-muted-foreground">{p.unidade}</TableCell>
+                      <TableCell className="font-mono text-xs">{p.itemCode}</TableCell>
+                      <TableCell>{p.name}</TableCell>
+                      <TableCell className="text-muted-foreground">{p.unitCode}</TableCell>
                       <TableCell className="font-semibold">{saldo}</TableCell>
                       <TableCell>
                         <Input
@@ -209,7 +228,7 @@ function EstoquePage() {
                           defaultValue={min}
                           className="h-7 w-20"
                           onBlur={(e) =>
-                            updateItemCatalogo(p.id, { estoqueMinimo: Number(e.target.value) })
+                            console.log("update min stock", p.id, e.target.value)
                           }
                         />
                       </TableCell>
@@ -244,22 +263,22 @@ function EstoquePage() {
               </TableHeader>
               <TableBody>
                 {movimentacoes.map((m) => {
-                  const item = catalogo.find((c) => c.id === m.itemId);
-                  const os = m.osId ? ordens.find((o) => o.id === m.osId) : undefined;
+                  const item = catalogo.find((c) => c.id === m.catalogItemId);
+                  const os = m.referenceId ? ordens.find((o) => o.id === m.referenceId) : undefined;
                   return (
                     <TableRow key={m.id}>
                       <TableCell className="text-muted-foreground">
-                        {formatDate(m.criadoEm)}
+                        {formatDate(m.occurredAt)}
                       </TableCell>
                       <TableCell>
-                        {item?.codigo} — {item?.nome}
+                        {item?.itemCode} — {item?.name}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{m.tipo}</Badge>
+                        <Badge variant="outline">{m.movementType}</Badge>
                       </TableCell>
-                      <TableCell className="font-semibold">{m.quantidade}</TableCell>
+                      <TableCell className="font-semibold">{m.quantity}</TableCell>
                       <TableCell className="text-muted-foreground">
-                        {[m.motivo, os ? os.numero : undefined].filter(Boolean).join(" · ") || "—"}
+                        {[m.notes, os ? os.osNumber : undefined].filter(Boolean).join(" · ") || "—"}
                       </TableCell>
                     </TableRow>
                   );

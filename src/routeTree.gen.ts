@@ -35,6 +35,7 @@ import { Route as OrcamentosIdRouteImport } from './routes/orcamentos.$id'
 import { Route as ContratosIdRouteImport } from './routes/contratos.$id'
 import { Route as ClientesIdRouteImport } from './routes/clientes.$id'
 import { Route as AtivosIdRouteImport } from './routes/ativos.$id'
+import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
 
 const SuporteRoute = SuporteRouteImport.update({
   id: '/suporte',
@@ -166,6 +167,11 @@ const AtivosIdRoute = AtivosIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AtivosRoute,
 } as any)
+const AdminUsuariosRoute = AdminUsuariosRouteImport.update({
+  id: '/admin/usuarios',
+  path: '/admin/usuarios',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -186,6 +192,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/suporte': typeof SuporteRouteWithChildren
+  '/admin/usuarios': typeof AdminUsuariosRoute
   '/ativos/$id': typeof AtivosIdRoute
   '/clientes/$id': typeof ClientesIdRoute
   '/contratos/$id': typeof ContratosIdRoute
@@ -214,6 +221,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/suporte': typeof SuporteRouteWithChildren
+  '/admin/usuarios': typeof AdminUsuariosRoute
   '/ativos/$id': typeof AtivosIdRoute
   '/clientes/$id': typeof ClientesIdRoute
   '/contratos/$id': typeof ContratosIdRoute
@@ -243,6 +251,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/suporte': typeof SuporteRouteWithChildren
+  '/admin/usuarios': typeof AdminUsuariosRoute
   '/ativos/$id': typeof AtivosIdRoute
   '/clientes/$id': typeof ClientesIdRoute
   '/contratos/$id': typeof ContratosIdRoute
@@ -273,6 +282,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/suporte'
+    | '/admin/usuarios'
     | '/ativos/$id'
     | '/clientes/$id'
     | '/contratos/$id'
@@ -301,6 +311,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/suporte'
+    | '/admin/usuarios'
     | '/ativos/$id'
     | '/clientes/$id'
     | '/contratos/$id'
@@ -329,6 +340,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/signup'
     | '/suporte'
+    | '/admin/usuarios'
     | '/ativos/$id'
     | '/clientes/$id'
     | '/contratos/$id'
@@ -358,6 +370,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   SuporteRoute: typeof SuporteRouteWithChildren
+  AdminUsuariosRoute: typeof AdminUsuariosRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -544,6 +557,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AtivosIdRouteImport
       parentRoute: typeof AtivosRoute
     }
+    '/admin/usuarios': {
+      id: '/admin/usuarios'
+      path: '/admin/usuarios'
+      fullPath: '/admin/usuarios'
+      preLoaderRoute: typeof AdminUsuariosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -647,7 +667,18 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   SuporteRoute: SuporteRouteWithChildren,
+  AdminUsuariosRoute: AdminUsuariosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

@@ -26,7 +26,7 @@ import {
   useToggleTask,
   useUpdateServiceOrder,
 } from "@/hooks/domain";
-import { formatDate } from "@/lib/mock/store";
+import { formatDate } from "@/lib/formatters";
 import { ArrowLeft, CheckCircle2, Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { ServiceOrderStatus } from "@/types/serviceOrder";

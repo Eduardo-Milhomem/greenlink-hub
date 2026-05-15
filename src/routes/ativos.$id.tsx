@@ -2,8 +2,9 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageContainer, PageHeader } from "@/components/layout/page";
-import { useAppStore, formatDate } from "@/lib/mock/store";
-import { ArrowLeft } from "lucide-react";
+import { formatDate } from "@/lib/formatters";
+import { useAsset, useCustomer, useServiceOrders, useTickets, useContracts } from "@/hooks/domain";
+import { ArrowLeft, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/ativos/$id")({
   head: () => ({ meta: [{ title: "Ativo — GreenLink ADM" }] }),
@@ -19,17 +20,33 @@ type TimelineEntry = { d: string; label: string };
 
 function AtivoDetalhe() {
   const { id } = Route.useParams();
-  const { ativos, clientes, ordens, tickets, contratos } = useAppStore();
-  const a = ativos.find((x) => x.id === id);
+  const { data: a, isLoading: isLoadingAsset } = useAsset(id);
+  const { data: cli, isLoading: isLoadingCustomer } = useCustomer(a?.customerId);
+  const { data: ordens = [], isLoading: isLoadingOrders } = useServiceOrders();
+  const { data: tickets = [], isLoading: isLoadingTickets } = useTickets();
+  const { data: contratos = [], isLoading: isLoadingContracts } = useContracts();
+
+  const isLoading = isLoadingAsset || isLoadingCustomer || isLoadingOrders || isLoadingTickets || isLoadingContracts;
+
+  if (isLoading) {
+    return (
+      <PageContainer>
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
+        </div>
+      </PageContainer>
+    );
+  }
+
   if (!a) throw notFound();
-  const cli = clientes.find((c) => c.id === a.clienteId);
-  const historico = ordens.filter((o) => o.ativosIds.includes(a.id));
+
+  const historico = ordens.filter((o) => o.assetId === a.id);
   const ticketsRel = tickets.filter((t) => historico.some((o) => o.ticketId === t.id));
-  const contratoRel = contratos.find((c) => c.clienteId === a.clienteId && c.status === "ativo");
+  const contratoRel = contratos.find((c) => c.customerId === a.customerId && c.status === "active");
   const timeline: TimelineEntry[] = [
-    ...(a.instaladoEm ? [{ d: a.instaladoEm, label: "Instalado" }] : []),
-    ...historico.map((o) => ({ d: o.criadoEm, label: `OS ${o.numero}: ${o.titulo}` })),
-    ...(a.ultimaLeitura ? [{ d: a.ultimaLeitura, label: "Última leitura" }] : []),
+    ...(a.installedAt ? [{ d: a.installedAt, label: "Instalado" }] : []),
+    ...historico.map((o) => ({ d: o.createdAt, label: `OS ${o.osNumber}: ${o.description}` })),
+    ...(a.lastReadingAt ? [{ d: a.lastReadingAt, label: "Última leitura" }] : []),
   ].sort((x, y) => (x.d < y.d ? 1 : -1));
 
   return (
@@ -41,8 +58,8 @@ function AtivoDetalhe() {
         <ArrowLeft className="h-4 w-4" /> Ativos
       </Link>
       <PageHeader
-        title={a.tag}
-        description={[a.modelo, cli?.nome].filter(Boolean).join(" · ")}
+        title={a.assetTag}
+        description={[a.assetModelId, cli?.legalName].filter(Boolean).join(" · ")}
         actions={<Badge variant="outline">{a.status}</Badge>}
       />
 
@@ -50,10 +67,10 @@ function AtivoDetalhe() {
         <Card className="p-5 lg:col-span-2">
           <h2 className="font-semibold mb-4">Dados</h2>
           <div className="grid sm:grid-cols-2 gap-3 text-sm">
-            <Info label="Tag" value={a.tag} />
+            <Info label="Tag" value={a.assetTag} />
             <Info label="Status" value={<Badge>{a.status}</Badge>} />
-            <Info label="Modelo" value={a.modelo} />
-            <Info label="Tipo" value={a.tipo} />
+            <Info label="Modelo" value={a.assetModelId ?? "—"} />
+            <Info label="Tipo" value={a.catalogItemId ?? "—"} />
             <Info
               label="Cliente"
               value={
@@ -63,16 +80,16 @@ function AtivoDetalhe() {
                     params={{ id: cli.id }}
                     className="text-primary hover:underline"
                   >
-                    {cli.nome}
+                    {cli.legalName}
                   </Link>
                 ) : (
                   "Sem cliente"
                 )
               }
             />
-            <Info label="Localização" value={a.localizacao ?? "—"} />
-            <Info label="Instalado em" value={formatDate(a.instaladoEm)} />
-            <Info label="Última leitura" value={formatDate(a.ultimaLeitura)} />
+            <Info label="Localização" value={a.siteName ?? "—"} />
+            <Info label="Instalado em" value={formatDate(a.installedAt)} />
+            <Info label="Última leitura" value={formatDate(a.lastReadingAt)} />
             <Info
               label="Contrato vigente"
               value={
@@ -82,7 +99,7 @@ function AtivoDetalhe() {
                     params={{ id: contratoRel.id }}
                     className="text-primary hover:underline"
                   >
-                    {contratoRel.numero}
+                    {contratoRel.contractNumber}
                   </Link>
                 ) : (
                   "—"
@@ -115,10 +132,10 @@ function AtivoDetalhe() {
                   className="block rounded-md border p-3 hover:bg-muted"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">{o.numero}</span>
+                    <span className="font-medium">{o.osNumber}</span>
                     <Badge variant="outline">{o.status}</Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">{o.titulo}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{o.description}</p>
                 </Link>
               ))}
               {!historico.length && (
@@ -137,10 +154,10 @@ function AtivoDetalhe() {
                   className="block rounded-md border p-3 hover:bg-muted"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">{t.numero}</span>
+                    <span className="font-medium">{t.ticketNumber}</span>
                     <Badge variant="outline">{t.status}</Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">{t.assunto}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t.subject}</p>
                 </Link>
               ))}
               {!ticketsRel.length && (

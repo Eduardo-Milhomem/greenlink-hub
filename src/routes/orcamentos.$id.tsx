@@ -18,7 +18,7 @@ import {
   useGenerateOrder,
   useUpdateQuote,
 } from "@/hooks/domain";
-import { formatBRL, formatDate } from "@/lib/mock/store";
+import { formatBRL, formatDate } from "@/lib/formatters";
 import { ArrowLeft, CheckCircle2, XCircle, Send, Truck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { QuoteStatus } from "@/types/quote";

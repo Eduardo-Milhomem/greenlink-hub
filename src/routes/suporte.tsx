@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 import { useTickets, useCustomers } from "@/hooks/domain";
-import { formatDate } from "@/lib/mock/store";
+import { formatDate } from "@/lib/formatters";
 import { Plus, MessageSquare, Loader2 } from "lucide-react";
 import type { TicketStatus, TicketPriority } from "@/types/ticket";
 

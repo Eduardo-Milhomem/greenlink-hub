@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 import { useTicket, useCustomer, useCreateServiceOrder } from "@/hooks/domain";
-import { formatDate } from "@/lib/mock/store";
+import { formatDate } from "@/lib/formatters";
 import { ArrowLeft, Send, Wrench, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { TicketStatus } from "@/types/ticket";

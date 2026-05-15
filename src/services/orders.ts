@@ -1,65 +1,72 @@
-import { useAppStore } from "@/lib/mock/store";
-import { CustomerOrder, type OrderStatus } from "@/types/order";
-import type { Pedido } from "@/lib/mock/types";
+import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
+import type { CustomerOrder, CustomerOrderItem, OrderStatus } from "@/types/order";
 
-const pedidoStatusToOrderStatus: Record<Pedido["status"], OrderStatus> = {
-  aberto: "open",
-  aprovado: "approved",
-  faturado: "invoiced",
-  parcialmente_atendido: "partially_fulfilled",
-  atendido: "fulfilled",
-  cancelado: "cancelled",
-};
+type OrderRow = Database["public"]["Tables"]["customer_orders"]["Row"];
+type OrderItemRow = Database["public"]["Tables"]["order_items"]["Row"];
 
-const orderStatusToPedidoStatus: Record<OrderStatus, Pedido["status"]> = {
-  open: "aberto",
-  approved: "aprovado",
-  invoiced: "faturado",
-  partially_fulfilled: "parcialmente_atendido",
-  fulfilled: "atendido",
-  cancelled: "cancelado",
-};
+const mapOrderItem = (row: OrderItemRow): CustomerOrderItem => ({
+  id: row.id,
+  orderId: row.order_id,
+  catalogItemId: row.catalog_item_id ?? undefined,
+  description: row.description,
+  itemType: row.item_type,
+  quantity: Number(row.quantity) || 0,
+  unitPrice: Number(row.unit_price) || 0,
+  totalAmount: Number(row.total_amount) || 0,
+  serviceStartDate: row.service_start_date ?? undefined,
+  serviceEndDate: row.service_end_date ?? undefined,
+});
+
+const mapOrder = (row: OrderRow & { order_items?: OrderItemRow[] | null }): CustomerOrder => ({
+  id: row.id,
+  orderNumber: row.order_number,
+  quoteId: row.quote_id ?? undefined,
+  customerId: row.customer_id,
+  status: row.status,
+  orderDate: row.order_date,
+  subtotal: Number(row.subtotal) || 0,
+  discountAmount: Number(row.discount_amount) || 0,
+  totalAmount: Number(row.total_amount) || 0,
+  notes: row.notes ?? undefined,
+  createdBy: row.created_by ?? undefined,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  items: (row.order_items ?? []).map(mapOrderItem),
+});
 
 export const orderService = {
   list: async (): Promise<CustomerOrder[]> => {
-    const orders = useAppStore.getState().pedidos;
-    return orders.map((p) => ({
-      id: p.id,
-      orderNumber: p.numero,
-      quoteId: p.orcamentoId,
-      customerId: p.clienteId,
-      status: pedidoStatusToOrderStatus[p.status],
-      orderDate: p.criadoEm,
-      subtotal: p.total,
-      discountAmount: 0,
-      totalAmount: p.total,
-      notes: "",
-      createdAt: p.criadoEm,
-      updatedAt: p.criadoEm,
-      items: (p.itens || []).map((i) => ({
-        id: i.itemId,
-        orderId: p.id,
-        catalogItemId: i.itemId,
-        description: i.nome,
-        itemType: "product",
-        quantity: i.quantidade,
-        unitPrice: i.precoUnit,
-        totalAmount: (i.precoUnit - i.desconto) * i.quantidade,
-      })),
-    }));
+    const { data, error } = await supabase
+      .from("customer_orders")
+      .select("*, order_items(*)")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map((row) => mapOrder(row as any));
   },
 
   get: async (id: string): Promise<CustomerOrder | undefined> => {
-    const orders = await orderService.list();
-    return orders.find((o) => o.id === id);
+    const { data, error } = await supabase
+      .from("customer_orders")
+      .select("*, order_items(*)")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? mapOrder(data as any) : undefined;
   },
 
   setStatus: async (id: string, status: string) => {
-    const setStatus = useAppStore.getState().atualizarStatusPedido;
-    const next =
-      status in orderStatusToPedidoStatus
-        ? orderStatusToPedidoStatus[status as OrderStatus]
-        : "aberto";
-    setStatus(id, next);
+    const next: OrderStatus =
+      status === "open" ||
+      status === "approved" ||
+      status === "invoiced" ||
+      status === "partially_fulfilled" ||
+      status === "fulfilled" ||
+      status === "cancelled"
+        ? (status as OrderStatus)
+        : "open";
+
+    const { error } = await supabase.from("customer_orders").update({ status: next }).eq("id", id);
+    if (error) throw error;
   },
 };

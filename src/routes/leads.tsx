@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/table";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 import { useLeads, useCreateLead, useUpdateLead, useConvertLead } from "@/hooks/domain";
-import { formatDate } from "@/lib/mock/store";
+import { formatDate } from "@/lib/formatters";
 import type { LeadStatus } from "@/types/lead";
 import { Plus, ArrowRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";

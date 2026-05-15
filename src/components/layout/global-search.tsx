@@ -11,7 +11,18 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
-import { useAppStore } from "@/lib/mock/store";
+import {
+  useCustomers,
+  useLeads,
+  useOpportunities,
+  useQuotes,
+  useOrders,
+  useContracts,
+  useServiceOrders,
+  useAssets,
+  useTickets,
+  useCatalog,
+} from "@/hooks/domain";
 import { buildGlobalSearchIndex } from "@/lib/search-index";
 import { filterGlobalSearchItems, groupGlobalSearchItems } from "@/lib/search";
 import {
@@ -57,7 +68,17 @@ const kindIcon: Record<string, LucideIcon> = {
 
 export function GlobalSearch() {
   const navigate = useNavigate();
-  const store = useAppStore();
+  const { data: clientes = [] } = useCustomers();
+  const { data: leads = [] } = useLeads();
+  const { data: oportunidades = [] } = useOpportunities();
+  const { data: orcamentos = [] } = useQuotes();
+  const { data: pedidos = [] } = useOrders();
+  const { data: contratos = [] } = useContracts();
+  const { data: ordens = [] } = useServiceOrders();
+  const { data: ativos = [] } = useAssets();
+  const { data: tickets = [] } = useTickets();
+  const { data: catalogo = [] } = useCatalog();
+
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
@@ -82,28 +103,28 @@ export function GlobalSearch() {
   const index = useMemo(
     () =>
       buildGlobalSearchIndex({
-        clientes: store.clientes,
-        leads: store.leads,
-        oportunidades: store.oportunidades,
-        orcamentos: store.orcamentos,
-        pedidos: store.pedidos,
-        contratos: store.contratos,
-        ordens: store.ordens,
-        ativos: store.ativos,
-        tickets: store.tickets,
-        catalogo: store.catalogo,
+        clientes,
+        leads,
+        oportunidades,
+        orcamentos,
+        pedidos,
+        contratos,
+        ordens,
+        ativos,
+        tickets,
+        catalogo,
       }),
     [
-      store.clientes,
-      store.leads,
-      store.oportunidades,
-      store.orcamentos,
-      store.pedidos,
-      store.contratos,
-      store.ordens,
-      store.ativos,
-      store.tickets,
-      store.catalogo,
+      clientes,
+      leads,
+      oportunidades,
+      orcamentos,
+      pedidos,
+      contratos,
+      ordens,
+      ativos,
+      tickets,
+      catalogo,
     ],
   );
 

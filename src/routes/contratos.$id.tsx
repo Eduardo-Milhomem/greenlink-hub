@@ -22,7 +22,7 @@ import {
   useAddContractItems,
   useCatalog,
 } from "@/hooks/domain";
-import { formatBRL, formatDate } from "@/lib/mock/store";
+import { formatBRL, formatDate } from "@/lib/formatters";
 import {
   ArrowLeft,
   FileSignature,

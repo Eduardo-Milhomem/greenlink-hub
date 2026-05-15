@@ -10,6 +10,7 @@ import { serviceOrderService } from "./serviceOrders";
 import { ticketService } from "./tickets";
 import { inventoryService } from "./inventory";
 import { financeService } from "./finance";
+import { adminService } from "./admin";
 
 /**
  * Camada de serviços por domínio unificada.
@@ -27,6 +28,7 @@ export const services = {
   tickets: ticketService,
   inventory: inventoryService,
   finance: financeService,
+  admin: adminService,
 };
 
 export type Services = typeof services;
@@ -43,4 +45,5 @@ export * from "./serviceOrders";
 export * from "./tickets";
 export * from "./inventory";
 export * from "./finance";
+export * from "./admin";
 export * from "./http";

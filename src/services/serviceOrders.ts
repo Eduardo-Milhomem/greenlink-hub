@@ -1,128 +1,181 @@
-import { useAppStore } from "@/lib/mock/store";
-import { ServiceOrder, type ServicePriority, type ServiceOrderStatus } from "@/types/serviceOrder";
-import type { OSStatus, OSPrioridade } from "@/lib/mock/types";
+import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
+import type { ServiceOrder, ServiceOrderTask } from "@/types/serviceOrder";
 
-const osPrioridadeToDomain: Record<OSPrioridade, ServicePriority> = {
-  baixa: "low",
-  media: "medium",
-  alta: "high",
-  critica: "urgent",
-};
+type ServiceOrderRow = Database["public"]["Tables"]["service_orders"]["Row"];
+type ServiceOrderInsert = Database["public"]["Tables"]["service_orders"]["Insert"];
+type ServiceOrderUpdate = Database["public"]["Tables"]["service_orders"]["Update"];
+type ServiceOrderTaskRow = Database["public"]["Tables"]["service_order_tasks"]["Row"];
+type ServiceOrderTaskInsert = Database["public"]["Tables"]["service_order_tasks"]["Insert"];
 
-const domainToOsPrioridade: Record<ServicePriority, OSPrioridade> = {
-  low: "baixa",
-  medium: "media",
-  high: "alta",
-  urgent: "critica",
-};
+const mapTask = (row: ServiceOrderTaskRow): ServiceOrderTask => ({
+  id: row.id,
+  serviceOrderId: row.service_order_id,
+  title: row.title,
+  status: row.status === "done" ? "done" : "pending",
+  sortOrder: row.sort_order,
+  completedAt: row.completed_at ?? undefined,
+});
 
-const osStatusToDomain: Record<OSStatus, ServiceOrderStatus> = {
-  aberta: "open",
-  agendada: "scheduled",
-  em_rota: "in_route",
-  em_execucao: "in_progress",
-  aguardando_pecas: "waiting_parts",
-  concluida: "done",
-  cancelada: "cancelled",
-  retorno_necessario: "return_required",
-};
+const mapServiceOrder = (
+  row: ServiceOrderRow & { service_order_tasks?: ServiceOrderTaskRow[] | null },
+): ServiceOrder => ({
+  id: row.id,
+  osNumber: row.os_number,
+  customerId: row.customer_id,
+  contractId: row.contract_id ?? undefined,
+  assetId: row.asset_id ?? undefined,
+  orderId: row.order_id ?? undefined,
+  ticketId: row.ticket_id ?? undefined,
+  serviceType: row.service_type,
+  priority: row.priority,
+  status: row.status,
+  scheduledStart: row.scheduled_start ?? undefined,
+  scheduledEnd: row.scheduled_end ?? undefined,
+  completedAt: row.completed_at ?? undefined,
+  siteAddressId: undefined,
+  description: row.description ?? undefined,
+  createdBy: row.created_by ?? undefined,
+  assignedTo: row.assigned_to ?? undefined,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  tasks: (row.service_order_tasks ?? []).map(mapTask),
+});
 
-const domainToOsStatus: Record<ServiceOrderStatus, OSStatus> = {
-  open: "aberta",
-  scheduled: "agendada",
-  in_route: "em_rota",
-  in_progress: "em_execucao",
-  waiting_parts: "aguardando_pecas",
-  done: "concluida",
-  cancelled: "cancelada",
-  return_required: "retorno_necessario",
-};
+const buildServiceOrderPayload = (data: Partial<ServiceOrder>): ServiceOrderInsert | ServiceOrderUpdate => ({
+  os_number: data.osNumber,
+  customer_id: data.customerId,
+  contract_id: data.contractId ?? null,
+  asset_id: data.assetId ?? null,
+  order_id: data.orderId ?? null,
+  ticket_id: data.ticketId ?? null,
+  service_type: data.serviceType,
+  priority: data.priority,
+  status: data.status,
+  scheduled_start: data.scheduledStart ?? null,
+  scheduled_end: data.scheduledEnd ?? null,
+  completed_at: data.completedAt ?? null,
+  description: data.description ?? null,
+  assigned_to: data.assignedTo ?? null,
+});
 
 export const serviceOrderService = {
   list: async (): Promise<ServiceOrder[]> => {
-    const orders = useAppStore.getState().ordens;
-    return orders.map((o) => ({
-      id: o.id,
-      osNumber: o.numero,
-      customerId: o.clienteId,
-      contractId: o.contratoId,
-      orderId: o.pedidoId,
-      ticketId: o.ticketId,
-      serviceType: "maintenance",
-      priority: osPrioridadeToDomain[o.prioridade],
-      status: osStatusToDomain[o.status],
-      description: o.titulo,
-      assignedTo: o.tecnico,
-      createdAt: o.criadoEm,
-      updatedAt: o.criadoEm,
-      completedAt: o.concluidaEm,
-      tasks: o.tarefas.map((t) => ({
-        id: t.id,
-        serviceOrderId: o.id,
-        title: t.descricao,
-        status: t.feita ? "done" : "pending",
-        sortOrder: 0,
-        completedAt: t.feita ? o.concluidaEm : undefined,
-      })),
-    }));
+    const { data, error } = await supabase
+      .from("service_orders")
+      .select("*, service_order_tasks(*)")
+      .order("updated_at", { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map((row) => mapServiceOrder(row as any));
   },
 
   get: async (id: string): Promise<ServiceOrder | undefined> => {
-    const orders = await serviceOrderService.list();
-    return orders.find((o) => o.id === id);
+    const { data, error } = await supabase
+      .from("service_orders")
+      .select("*, service_order_tasks(*)")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? mapServiceOrder(data as any) : undefined;
   },
 
   create: async (data: Partial<ServiceOrder>) => {
-    const addOS = useAppStore.getState().addOS;
-    addOS({
-      titulo: data.description!,
-      clienteId: data.customerId!,
-      prioridade: data.priority ? domainToOsPrioridade[data.priority] : "media",
-      status: data.status ? domainToOsStatus[data.status] : "aberta",
-      tecnico: data.assignedTo,
-      contratoId: data.contractId,
-      pedidoId: data.orderId,
-      ticketId: data.ticketId,
-      tarefas: [],
-      ativosIds: [],
-    });
+    const now = new Date();
+    const osNumber =
+      data.osNumber ??
+      `OS-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${Math.random().toString(16).slice(2, 6).toUpperCase()}`;
+
+    const { data: created, error } = await supabase
+      .from("service_orders")
+      .insert({
+        os_number: osNumber,
+        customer_id: data.customerId!,
+        contract_id: data.contractId ?? null,
+        asset_id: data.assetId ?? null,
+        order_id: data.orderId ?? null,
+        ticket_id: data.ticketId ?? null,
+        service_type: data.serviceType ?? "maintenance",
+        priority: data.priority ?? "medium",
+        status: data.status ?? "open",
+        scheduled_start: data.scheduledStart ?? null,
+        scheduled_end: data.scheduledEnd ?? null,
+        description: data.description ?? null,
+        assigned_to: data.assignedTo ?? null,
+      })
+      .select("*, service_order_tasks(*)")
+      .single();
+    if (error) throw error;
+    return mapServiceOrder(created as any);
   },
 
   update: async (id: string, data: Partial<ServiceOrder>) => {
-    const updateOS = useAppStore.getState().updateOS;
-    updateOS(id, {
-      titulo: data.description,
-      clienteId: data.customerId,
-      prioridade: data.priority ? domainToOsPrioridade[data.priority] : undefined,
-      status: data.status ? domainToOsStatus[data.status] : undefined,
-      tecnico: data.assignedTo,
-    });
+    const { data: updated, error } = await supabase
+      .from("service_orders")
+      .update(buildServiceOrderPayload(data))
+      .eq("id", id)
+      .select("*, service_order_tasks(*)")
+      .single();
+    if (error) throw error;
+    return mapServiceOrder(updated as any);
   },
 
   remove: async (id: string) => {
-    const remove = useAppStore.getState().removeOS;
-    remove(id);
+    const { error } = await supabase.from("service_orders").delete().eq("id", id);
+    if (error) throw error;
   },
 
   listTasks: async (osId: string) => {
-    const os = await serviceOrderService.get(osId);
-    return os?.tasks || [];
+    const { data, error } = await supabase
+      .from("service_order_tasks")
+      .select("*")
+      .eq("service_order_id", osId)
+      .order("sort_order", { ascending: true });
+    if (error) throw error;
+    return (data ?? []).map(mapTask);
   },
 
   addTask: async (osId: string, title: string) => {
-    const update = useAppStore.getState().updateOS;
-    const os = useAppStore.getState().ordens.find((o) => o.id === osId);
-    if (!os) return;
-    update(osId, {
-      tarefas: [
-        ...os.tarefas,
-        { id: Math.random().toString(36).slice(2, 8), descricao: title, feita: false },
-      ],
-    });
+    const { data: existing, error: existingError } = await supabase
+      .from("service_order_tasks")
+      .select("sort_order")
+      .eq("service_order_id", osId)
+      .order("sort_order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existingError) throw existingError;
+
+    const payload: ServiceOrderTaskInsert = {
+      service_order_id: osId,
+      title,
+      status: "pending",
+      sort_order: (existing?.sort_order ?? 0) + 1,
+      completed_at: null,
+    };
+
+    const { data, error } = await supabase.from("service_order_tasks").insert(payload).select().single();
+    if (error) throw error;
+    return mapTask(data);
   },
 
   toggleTask: async (osId: string, taskId: string) => {
-    const toggle = useAppStore.getState().toggleTarefa;
-    toggle(osId, taskId);
+    const { data: task, error: loadError } = await supabase
+      .from("service_order_tasks")
+      .select("*")
+      .eq("id", taskId)
+      .eq("service_order_id", osId)
+      .single();
+    if (loadError) throw loadError;
+
+    const nextStatus = task.status === "done" ? "pending" : "done";
+    const nextCompletedAt = nextStatus === "done" ? new Date().toISOString() : null;
+
+    const { data: updated, error } = await supabase
+      .from("service_order_tasks")
+      .update({ status: nextStatus, completed_at: nextCompletedAt })
+      .eq("id", taskId)
+      .select()
+      .single();
+    if (error) throw error;
+    return mapTask(updated);
   },
 };

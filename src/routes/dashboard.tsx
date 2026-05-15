@@ -14,7 +14,7 @@ import {
   useCatalog,
   useInventoryMovements,
 } from "@/hooks/domain";
-import { formatBRL, formatDate } from "@/lib/mock/store";
+import { formatBRL, formatDate } from "@/lib/formatters";
 import {
   ArrowUpRight,
   TrendingUp,

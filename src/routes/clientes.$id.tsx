@@ -4,12 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 import {
-  useAppStore,
   formatBRL,
   formatDate,
-  calcOrcamentoTotal,
-  visualLancamentoStatus,
-} from "@/lib/mock/store";
+} from "@/lib/formatters";
+import { useCustomers, useOpportunities, useQuotes, useOrders, useContracts, useServiceOrders, useTickets, useAssets, useReceivables } from "@/hooks/domain";
 import { ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/clientes/$id")({
@@ -29,63 +27,62 @@ export const Route = createFileRoute("/clientes/$id")({
 
 function ClienteDetalhe() {
   const { id } = Route.useParams();
-  const {
-    clientes,
-    oportunidades,
-    orcamentos,
-    pedidos,
-    contratos,
-    ordens,
-    tickets,
-    ativos,
-    lancamentos,
-  } = useAppStore();
+  const { data: clientes = [] } = useCustomers();
+  const { data: oportunidades = [] } = useOpportunities();
+  const { data: orcamentos = [] } = useQuotes();
+  const { data: pedidos = [] } = useOrders();
+  const { data: contratos = [] } = useContracts();
+  const { data: ordens = [] } = useServiceOrders();
+  const { data: tickets = [] } = useTickets();
+  const { data: ativos = [] } = useAssets();
+  const { data: lancamentos = [] } = useReceivables();
+
   const cliente = clientes.find((c) => c.id === id);
   if (!cliente) throw notFound();
 
-  const opps = oportunidades.filter((o) => o.clienteId === cliente.id);
-  const orcs = orcamentos.filter((o) => o.clienteId === cliente.id);
-  const peds = pedidos.filter((p) => p.clienteId === cliente.id);
-  const ctrs = contratos.filter((c) => c.clienteId === cliente.id);
-  const oss = ordens.filter((o) => o.clienteId === cliente.id);
-  const tks = tickets.filter((t) => t.clienteId === cliente.id);
-  const ats = ativos.filter((a) => a.clienteId === cliente.id);
-  const lcts = lancamentos.filter((l) => l.clienteId === cliente.id);
+  const opps = oportunidades.filter((o) => o.customerId === cliente.id);
+  const orcs = orcamentos.filter((o) => o.customerId === cliente.id);
+  const peds = pedidos.filter((p) => p.customerId === cliente.id);
+  const ctrs = contratos.filter((c) => c.customerId === cliente.id);
+  const oss = ordens.filter((o) => o.customerId === cliente.id);
+  const tks = tickets.filter((t) => t.customerId === cliente.id);
+  const ats = ativos.filter((a) => a.customerId === cliente.id);
+  const lcts = lancamentos.filter((l) => l.customerId === cliente.id);
   const aReceber = lcts
-    .filter((l) => l.tipo === "receber" && l.status !== "pago" && l.status !== "cancelado")
-    .reduce((a, l) => a + (l.valor - (l.valorPago ?? 0)), 0);
+    .filter((l) => l.status !== "paid" && l.status !== "cancelled")
+    .reduce((a, l) => a + l.openAmount, 0);
   const recebido = lcts
-    .filter((l) => l.tipo === "receber" && l.status === "pago")
-    .reduce((a, l) => a + l.valor, 0);
+    .filter((l) => l.status === "paid")
+    .reduce((a, l) => a + l.amount, 0);
 
   // Timeline: junta tudo ordenado por data desc
   type Evt = { d: string; label: string; href?: string };
   const eventos: Evt[] = [
-    { d: cliente.criadoEm, label: "Cliente cadastrado" },
-    ...opps.map((o) => ({ d: o.criadoEm, label: `Oportunidade: ${o.titulo}` })),
+    { d: cliente.createdAt, label: "Cliente cadastrado" },
+    ...opps.map((o) => ({ d: o.createdAt, label: `Oportunidade: ${o.title}` })),
     ...orcs.map((o) => ({
-      d: o.criadoEm,
-      label: `Orçamento ${o.numero} (${o.status})`,
+      d: o.createdAt,
+      label: `Orçamento ${o.quoteNumber} (${o.status})`,
       href: `/orcamentos/${o.id}`,
     })),
     ...peds.map((p) => ({
-      d: p.criadoEm,
-      label: `Pedido ${p.numero} (${p.status})`,
+      d: p.createdAt,
+      label: `Pedido ${p.orderNumber} (${p.status})`,
       href: `/pedidos/${p.id}`,
     })),
     ...ctrs.map((c) => ({
-      d: c.criadoEm,
-      label: `Contrato ${c.numero}`,
+      d: c.createdAt,
+      label: `Contrato ${c.contractNumber}`,
       href: `/contratos/${c.id}`,
     })),
     ...oss.map((o) => ({
-      d: o.criadoEm,
-      label: `OS ${o.numero}: ${o.titulo}`,
+      d: o.createdAt,
+      label: `OS ${o.osNumber}: ${o.description}`,
       href: `/os/${o.id}`,
     })),
     ...tks.map((t) => ({
-      d: t.criadoEm,
-      label: `Ticket ${t.numero}: ${t.assunto}`,
+      d: t.createdAt,
+      label: `Ticket ${t.ticketNumber}: ${t.subject}`,
       href: `/suporte/${t.id}`,
     })),
   ].sort((a, b) => (a.d < b.d ? 1 : -1));
@@ -99,11 +96,11 @@ function ClienteDetalhe() {
         <ArrowLeft className="h-4 w-4" /> Clientes
       </Link>
       <PageHeader
-        title={cliente.nome}
-        description={cliente.documento ?? cliente.email ?? "—"}
+        title={cliente.legalName}
+        description={cliente.documentNumber ?? cliente.email ?? "—"}
         actions={
           <Badge variant="outline" className="uppercase text-[10px]">
-            {cliente.tipo}
+            {cliente.customerType}
           </Badge>
         }
       />
@@ -118,7 +115,7 @@ function ClienteDetalhe() {
       <Tabs defaultValue="dados">
         <TabsList className="flex flex-wrap h-auto">
           <TabsTrigger value="dados">Dados</TabsTrigger>
-          <TabsTrigger value="contatos">Contatos ({cliente.contatos.length})</TabsTrigger>
+          <TabsTrigger value="contatos">Contatos ({cliente.contacts.length})</TabsTrigger>
           <TabsTrigger value="oportunidades">Oportunidades ({opps.length})</TabsTrigger>
           <TabsTrigger value="orcamentos">Orçamentos ({orcs.length})</TabsTrigger>
           <TabsTrigger value="pedidos">Pedidos ({peds.length})</TabsTrigger>
@@ -133,26 +130,26 @@ function ClienteDetalhe() {
         <TabsContent value="dados">
           <Card className="p-5 grid gap-3 sm:grid-cols-2">
             <Field label="E-mail" value={cliente.email} />
-            <Field label="Telefone" value={cliente.telefone} />
-            <Field label="Cidade" value={cliente.cidade} />
-            <Field label="UF" value={cliente.estado} />
-            <Field label="Endereço" value={cliente.endereco} className="sm:col-span-2" />
-            <Field label="Cadastrado em" value={formatDate(cliente.criadoEm)} />
+            <Field label="Telefone" value={cliente.phone} />
+            <Field label="Cidade" value={cliente.city} />
+            <Field label="UF" value={cliente.state} />
+            <Field label="Endereço" value={cliente.addresses?.[0]?.street} className="sm:col-span-2" />
+            <Field label="Cadastrado em" value={formatDate(cliente.createdAt)} />
           </Card>
         </TabsContent>
 
         <TabsContent value="contatos">
           <Card className="p-5">
-            {cliente.contatos.length === 0 ? (
+            {cliente.contacts.length === 0 ? (
               <p className="text-sm text-muted-foreground">Sem contatos.</p>
             ) : (
               <ul className="divide-y">
-                {cliente.contatos.map((c) => (
+                {cliente.contacts.map((c) => (
                   <li key={c.id} className="py-3 flex items-start justify-between">
                     <div>
-                      <p className="font-medium">{c.nome}</p>
+                      <p className="font-medium">{c.fullName}</p>
                       <p className="text-xs text-muted-foreground">
-                        {c.cargo ?? "—"} · {c.email ?? "—"} · {c.telefone ?? "—"}
+                        {c.roleTitle ?? "—"} · {c.email ?? "—"} · {c.phone ?? "—"}
                       </p>
                     </div>
                   </li>
@@ -167,10 +164,10 @@ function ClienteDetalhe() {
             {opps.map((o) => (
               <div key={o.id} className="flex items-center justify-between rounded-md border p-3">
                 <div>
-                  <p className="font-medium">{o.titulo}</p>
-                  <p className="text-xs text-muted-foreground">{o.estagio}</p>
+                  <p className="font-medium">{o.title}</p>
+                  <p className="text-xs text-muted-foreground">{o.stage}</p>
                 </div>
-                <p className="font-semibold">{formatBRL(o.valor)}</p>
+                <p className="font-semibold">{formatBRL(o.amount)}</p>
               </div>
             ))}
             {!opps.length && <p className="text-sm text-muted-foreground">Nenhuma oportunidade.</p>}
@@ -187,12 +184,12 @@ function ClienteDetalhe() {
                 className="flex items-center justify-between rounded-md border p-3 hover:bg-muted"
               >
                 <div>
-                  <p className="font-medium">{o.numero}</p>
+                  <p className="font-medium">{o.quoteNumber}</p>
                   <p className="text-xs text-muted-foreground">
-                    {formatDate(o.criadoEm)} · {o.status}
+                    {formatDate(o.createdAt)} · {o.status}
                   </p>
                 </div>
-                <p className="font-semibold">{formatBRL(calcOrcamentoTotal(o))}</p>
+                <p className="font-semibold">{formatBRL(o.totalAmount)}</p>
               </Link>
             ))}
             {!orcs.length && <p className="text-sm text-muted-foreground">Nenhum orçamento.</p>}
@@ -209,12 +206,12 @@ function ClienteDetalhe() {
                 className="flex items-center justify-between rounded-md border p-3 hover:bg-muted"
               >
                 <div>
-                  <p className="font-medium">{p.numero}</p>
+                  <p className="font-medium">{p.orderNumber}</p>
                   <p className="text-xs text-muted-foreground">
-                    {formatDate(p.criadoEm)} · {p.status}
+                    {formatDate(p.createdAt)} · {p.status}
                   </p>
                 </div>
-                <p className="font-semibold">{formatBRL(p.total)}</p>
+                <p className="font-semibold">{formatBRL(p.totalAmount)}</p>
               </Link>
             ))}
             {!peds.length && <p className="text-sm text-muted-foreground">Nenhum pedido.</p>}
@@ -231,12 +228,12 @@ function ClienteDetalhe() {
                 className="flex items-center justify-between rounded-md border p-3 hover:bg-muted"
               >
                 <div>
-                  <p className="font-medium">{c.numero}</p>
+                  <p className="font-medium">{c.contractNumber}</p>
                   <p className="text-xs text-muted-foreground">
-                    {c.tipo} · {c.frequencia} · {c.status}
+                    {c.contractType} · {c.billingFrequency} · {c.status}
                   </p>
                 </div>
-                <p className="font-semibold">{formatBRL(c.valorMensal)}</p>
+                <p className="font-semibold">{formatBRL(c.monthlyAmount)}</p>
               </Link>
             ))}
             {!ctrs.length && <p className="text-sm text-muted-foreground">Nenhum contrato.</p>}
@@ -253,9 +250,9 @@ function ClienteDetalhe() {
                 className="flex items-center justify-between rounded-md border p-3 hover:bg-muted"
               >
                 <div>
-                  <p className="font-medium">{a.tag}</p>
+                  <p className="font-medium">{a.assetTag}</p>
                   <p className="text-xs text-muted-foreground">
-                    {a.modelo} · {a.localizacao ?? "—"}
+                    {a.assetModelId ?? "—"} · {a.siteName ?? "—"}
                   </p>
                 </div>
                 <Badge variant="outline">{a.status}</Badge>
@@ -276,10 +273,10 @@ function ClienteDetalhe() {
               >
                 <div>
                   <p className="font-medium">
-                    {o.numero} — {o.titulo}
+                    {o.osNumber} — {o.description}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {o.tecnico ?? "Sem técnico"} · {formatDate(o.criadoEm)}
+                    {o.assignedTo ?? "Sem técnico"} · {formatDate(o.createdAt)}
                   </p>
                 </div>
                 <Badge variant="outline">{o.status}</Badge>
@@ -300,10 +297,10 @@ function ClienteDetalhe() {
               >
                 <div>
                   <p className="font-medium">
-                    {t.numero} — {t.assunto}
+                    {t.ticketNumber} — {t.subject}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {t.canal} · {t.prioridade}
+                    {t.channel} · {t.priority}
                   </p>
                 </div>
                 <Badge variant="outline">{t.status}</Badge>
@@ -318,12 +315,12 @@ function ClienteDetalhe() {
             {lcts.map((l) => (
               <div key={l.id} className="flex items-center justify-between rounded-md border p-3">
                 <div>
-                  <p className="font-medium">{l.descricao}</p>
+                  <p className="font-medium">{l.description}</p>
                   <p className="text-xs text-muted-foreground">
-                    Vence {formatDate(l.vencimento)} · {visualLancamentoStatus(l)}
+                    Vence {formatDate(l.dueDate)} · {l.status}
                   </p>
                 </div>
-                <p className="font-semibold">{formatBRL(l.valor)}</p>
+                <p className="font-semibold">{formatBRL(l.amount)}</p>
               </div>
             ))}
             {!lcts.length && (

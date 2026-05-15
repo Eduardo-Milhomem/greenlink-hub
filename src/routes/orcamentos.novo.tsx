@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/table";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 import { useCustomers, useCatalog, useCreateQuote } from "@/hooks/domain";
-import { formatBRL } from "@/lib/mock/store";
+import { formatBRL } from "@/lib/formatters";
 import { ArrowLeft, Plus, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { QuoteItem } from "@/types/quote";

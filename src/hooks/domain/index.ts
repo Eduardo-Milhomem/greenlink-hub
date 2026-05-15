@@ -10,3 +10,4 @@ export * from "./useServiceOrders";
 export * from "./useTickets";
 export * from "./useInventory";
 export * from "./useFinance";
+export * from "./useAdminUsers";

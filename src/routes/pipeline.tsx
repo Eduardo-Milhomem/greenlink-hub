@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -30,8 +30,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { PageContainer, PageHeader } from "@/components/layout/page";
-import { useAppStore, formatBRL } from "@/lib/mock/store";
-import { ESTAGIOS, type EstagioOportunidade, type Oportunidade } from "@/lib/mock/types";
+import { useCustomers, useCreateOpportunity, useMoveOpportunity, useOpportunities } from "@/hooks/domain";
+import { formatBRL } from "@/lib/formatters";
+import type { Opportunity, OpportunityStage } from "@/types/opportunity";
 import { Plus, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 
@@ -40,21 +41,38 @@ export const Route = createFileRoute("/pipeline")({
   component: Pipeline,
 });
 
+const STAGES: { id: OpportunityStage; label: string }[] = [
+  { id: "novo", label: "Novo" },
+  { id: "qualificado", label: "Qualificado" },
+  { id: "proposta", label: "Proposta" },
+  { id: "negociacao", label: "Negociação" },
+  { id: "ganho", label: "Ganho" },
+  { id: "perdido", label: "Perdido" },
+];
+
 function Pipeline() {
-  const { oportunidades, clientes, moverOportunidade, addOportunidade } = useAppStore();
+  const { data: oportunidades = [] } = useOpportunities();
+  const { data: clientes = [] } = useCustomers();
+  const moverOportunidade = useMoveOpportunity();
+  const criarOportunidade = useCreateOpportunity();
   const [open, setOpen] = useState(false);
-  const [clienteId, setClienteId] = useState(clientes[0]?.id ?? "");
-  const [estagio, setEstagio] = useState<EstagioOportunidade>("novo");
+  const [clienteId, setClienteId] = useState("");
+  const [estagio, setEstagio] = useState<OpportunityStage>("novo");
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+
+  useEffect(() => {
+    if (!clienteId && clientes.length) setClienteId(clientes[0].id);
+  }, [clienteId, clientes]);
 
   const onDragEnd = (e: DragEndEvent) => {
     const id = String(e.active.id);
-    const novoEstagio = e.over?.id as EstagioOportunidade | undefined;
+    const novoEstagio = e.over?.id as OpportunityStage | undefined;
     if (!novoEstagio) return;
     const opp = oportunidades.find((o) => o.id === id);
-    if (opp && opp.estagio !== novoEstagio) {
-      moverOportunidade(id, novoEstagio);
-      toast.success(`Movido para ${ESTAGIOS.find((e) => e.id === novoEstagio)?.label}`);
+    if (opp && opp.stage !== novoEstagio) {
+      void moverOportunidade.mutateAsync({ id, stage: novoEstagio }).then(() => {
+        toast.success(`Movido para ${STAGES.find((s) => s.id === novoEstagio)?.label}`);
+      });
     }
   };
 
@@ -77,17 +95,21 @@ function Pipeline() {
               </DialogHeader>
               <form
                 className="space-y-3"
-                onSubmit={(e) => {
+                onSubmit={async (e) => {
                   e.preventDefault();
                   const fd = new FormData(e.currentTarget);
-                  addOportunidade({
-                    titulo: String(fd.get("titulo")),
-                    clienteId,
-                    valor: Number(fd.get("valor") || 0),
-                    estagio,
-                  });
-                  toast.success("Oportunidade criada");
-                  setOpen(false);
+                  try {
+                    await criarOportunidade.mutateAsync({
+                      title: String(fd.get("titulo")),
+                      customerId: clienteId,
+                      amount: Number(fd.get("valor") || 0),
+                      stage: estagio,
+                    });
+                    toast.success("Oportunidade criada");
+                    setOpen(false);
+                  } catch (err) {
+                    toast.error("Erro ao criar oportunidade");
+                  }
                 }}
               >
                 <div className="space-y-1.5">
@@ -103,7 +125,7 @@ function Pipeline() {
                     <SelectContent>
                       {clientes.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
-                          {c.nome}
+                          {c.legalName}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -118,15 +140,15 @@ function Pipeline() {
                     <Label>Estágio</Label>
                     <Select
                       value={estagio}
-                      onValueChange={(v) => setEstagio(v as EstagioOportunidade)}
+                      onValueChange={(v) => setEstagio(v as OpportunityStage)}
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {ESTAGIOS.map((e) => (
-                          <SelectItem key={e.id} value={e.id}>
-                            {e.label}
+                        {STAGES.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -144,16 +166,16 @@ function Pipeline() {
 
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 snap-x">
-          {ESTAGIOS.map((e) => {
-            const cards = oportunidades.filter((o) => o.estagio === e.id);
-            const total = cards.reduce((a, o) => a + o.valor, 0);
+          {STAGES.map((s) => {
+            const cards = oportunidades.filter((o) => o.stage === s.id);
+            const total = cards.reduce((a, o) => a + o.amount, 0);
             return (
-              <Coluna key={e.id} id={e.id} label={e.label} count={cards.length} total={total}>
+              <Coluna key={s.id} id={s.id} label={s.label} count={cards.length} total={total}>
                 {cards.map((o) => (
                   <CardOportunidade
                     key={o.id}
                     opp={o}
-                    cliente={clientes.find((c) => c.id === o.clienteId)?.nome ?? "—"}
+                    cliente={clientes.find((c) => c.id === o.customerId)?.legalName ?? "—"}
                   />
                 ))}
               </Coluna>
@@ -197,7 +219,7 @@ function Coluna({
   );
 }
 
-function CardOportunidade({ opp, cliente }: { opp: Oportunidade; cliente: string }) {
+function CardOportunidade({ opp, cliente }: { opp: Opportunity; cliente: string }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: opp.id });
   const style = transform
     ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
@@ -213,13 +235,13 @@ function CardOportunidade({ opp, cliente }: { opp: Oportunidade; cliente: string
       <div className="flex items-start gap-2">
         <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm truncate">{opp.titulo}</p>
+          <p className="font-medium text-sm truncate">{opp.title}</p>
           <p className="text-xs text-muted-foreground truncate">{cliente}</p>
           <div className="flex items-center justify-between mt-2">
-            <span className="text-sm font-semibold">{formatBRL(opp.valor)}</span>
-            {opp.responsavel && (
+            <span className="text-sm font-semibold">{formatBRL(opp.amount)}</span>
+            {opp.assignedTo && (
               <Badge variant="outline" className="text-[10px]">
-                {opp.responsavel}
+                {opp.assignedTo}
               </Badge>
             )}
           </div>

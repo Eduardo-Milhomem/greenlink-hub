@@ -30,7 +30,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 import { useCustomers, useCreateCustomer } from "@/hooks/domain";
-import { formatDate } from "@/lib/mock/store";
+import { formatDate } from "@/lib/formatters";
 import type { CustomerType } from "@/types/customer";
 import { Plus, Search, Loader2 } from "lucide-react";
 import { toast } from "sonner";
