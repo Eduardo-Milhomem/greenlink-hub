@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SuporteRouteImport } from './routes/suporte'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PipelineRouteImport } from './routes/pipeline'
 import { Route as PedidosRouteImport } from './routes/pedidos'
 import { Route as OsRouteImport } from './routes/os'
@@ -43,6 +44,11 @@ const SuporteRoute = SuporteRouteImport.update({
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PipelineRoute = PipelineRouteImport.update({
@@ -177,6 +183,7 @@ export interface FileRoutesByFullPath {
   '/os': typeof OsRouteWithChildren
   '/pedidos': typeof PedidosRouteWithChildren
   '/pipeline': typeof PipelineRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/suporte': typeof SuporteRouteWithChildren
   '/ativos/$id': typeof AtivosIdRoute
@@ -204,6 +211,7 @@ export interface FileRoutesByTo {
   '/os': typeof OsRouteWithChildren
   '/pedidos': typeof PedidosRouteWithChildren
   '/pipeline': typeof PipelineRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/suporte': typeof SuporteRouteWithChildren
   '/ativos/$id': typeof AtivosIdRoute
@@ -232,6 +240,7 @@ export interface FileRoutesById {
   '/os': typeof OsRouteWithChildren
   '/pedidos': typeof PedidosRouteWithChildren
   '/pipeline': typeof PipelineRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/suporte': typeof SuporteRouteWithChildren
   '/ativos/$id': typeof AtivosIdRoute
@@ -261,6 +270,7 @@ export interface FileRouteTypes {
     | '/os'
     | '/pedidos'
     | '/pipeline'
+    | '/reset-password'
     | '/signup'
     | '/suporte'
     | '/ativos/$id'
@@ -288,6 +298,7 @@ export interface FileRouteTypes {
     | '/os'
     | '/pedidos'
     | '/pipeline'
+    | '/reset-password'
     | '/signup'
     | '/suporte'
     | '/ativos/$id'
@@ -315,6 +326,7 @@ export interface FileRouteTypes {
     | '/os'
     | '/pedidos'
     | '/pipeline'
+    | '/reset-password'
     | '/signup'
     | '/suporte'
     | '/ativos/$id'
@@ -343,6 +355,7 @@ export interface RootRouteChildren {
   OsRoute: typeof OsRouteWithChildren
   PedidosRoute: typeof PedidosRouteWithChildren
   PipelineRoute: typeof PipelineRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   SuporteRoute: typeof SuporteRouteWithChildren
 }
@@ -361,6 +374,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pipeline': {
@@ -624,9 +644,20 @@ const rootRouteChildren: RootRouteChildren = {
   OsRoute: OsRouteWithChildren,
   PedidosRoute: PedidosRouteWithChildren,
   PipelineRoute: PipelineRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   SuporteRoute: SuporteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
