@@ -29,10 +29,10 @@ import {
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageContainer, PageHeader } from "@/components/layout/page";
-import { useCustomers, useCreateCustomer } from "@/hooks/domain";
+import { useCustomers, useCreateCustomer, useUpdateCustomer } from "@/hooks/domain";
 import { formatDate } from "@/lib/formatters";
-import type { CustomerType } from "@/types/customer";
-import { Plus, Search, Loader2 } from "lucide-react";
+import type { CustomerType, Customer } from "@/types/customer";
+import { Plus, Search, Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/clientes")({
@@ -43,8 +43,11 @@ export const Route = createFileRoute("/clientes")({
 function ClientesPage() {
   const { data: customers = [], isLoading } = useCustomers();
   const createCustomer = useCreateCustomer();
+  const updateCustomer = useUpdateCustomer();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
+  const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
   const [tipo, setTipo] = useState<CustomerType>("pj");
 
   const filtered = customers.filter(
@@ -159,7 +162,131 @@ function ClientesPage() {
           </Dialog>
         }
       />
-
+      <Dialog
+        open={editOpen}
+        onOpenChange={(v) => {
+          setEditOpen(v);
+          if (!v) setEditCustomer(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar cliente</DialogTitle>
+          </DialogHeader>
+          {editCustomer && (
+            <form
+              className="space-y-3"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                const normalize = (value: FormDataEntryValue | null) => {
+                  const s = (value ?? "").toString().trim();
+                  return s.length ? s : undefined;
+                };
+                try {
+                  await updateCustomer.mutateAsync({
+                    id: editCustomer.id,
+                    data: {
+                      customerType: editCustomer.customerType,
+                      legalName: String(fd.get("nome")),
+                      documentNumber: normalize(fd.get("documento")),
+                      email: normalize(fd.get("email")),
+                      phone: normalize(fd.get("telefone")),
+                      city: normalize(fd.get("cidade")),
+                      state: normalize(fd.get("estado")),
+                      status: fd.get("status") === "true" ? "active" : "inactive",
+                    },
+                  });
+                  toast.success("Cliente atualizado");
+                  setEditOpen(false);
+                  setEditCustomer(null);
+                } catch (err) {
+                  console.error(err);
+                  const e2 = err as { message?: string; code?: string };
+                  let message = "Erro ao atualizar cliente";
+                  if (
+                    e2.code === "42501" ||
+                    (e2.message && e2.message.toLowerCase().includes("permission"))
+                  ) {
+                    message =
+                      "Você não tem permissão para editar clientes. Fale com um administrador.";
+                  }
+                  toast.error(message);
+                }
+              }}
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Tipo</Label>
+                  <Input
+                    value={editCustomer.customerType === "pj" ? "Pessoa Jurídica" : "Pessoa Física"}
+                    disabled
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>{editCustomer.customerType === "pj" ? "CNPJ" : "CPF"}</Label>
+                  <Input name="documento" defaultValue={editCustomer.documentNumber ?? ""} />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Razão social / Nome</Label>
+                <Input name="nome" defaultValue={editCustomer.legalName} required />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>E-mail</Label>
+                  <Input name="email" type="email" defaultValue={editCustomer.email ?? ""} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Telefone</Label>
+                  <Input name="telefone" defaultValue={editCustomer.phone ?? ""} />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2 space-y-1.5">
+                  <Label>Cidade</Label>
+                  <Input name="cidade" defaultValue={editCustomer.city ?? ""} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>UF</Label>
+                  <Input name="estado" maxLength={2} defaultValue={editCustomer.state ?? ""} />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Status</Label>
+                <Select
+                  name="status"
+                  defaultValue={editCustomer.status === "active" ? "true" : "false"}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Ativo</SelectItem>
+                    <SelectItem value="false">Inativo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setEditOpen(false);
+                    setEditCustomer(null);
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={updateCustomer.isPending}>
+                  {updateCustomer.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                  Salvar
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
       <Card className="p-3 md:p-4">
         <div className="flex items-center gap-2 mb-3">
           <div className="relative flex-1 max-w-sm">
@@ -211,6 +338,7 @@ function ClientesPage() {
                     <TableHead>Documento</TableHead>
                     <TableHead>Cidade/UF</TableHead>
                     <TableHead>Cadastrado</TableHead>
+                    <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -239,11 +367,25 @@ function ClientesPage() {
                       <TableCell className="text-muted-foreground">
                         {formatDate(c.createdAt)}
                       </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setEditCustomer(c);
+                            setEditOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                   {!filtered.length && (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                         Nenhum cliente.
                       </TableCell>
                     </TableRow>

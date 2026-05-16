@@ -37,6 +37,8 @@ import {
   useReceivePayment,
   useCreateReceivable,
   useCreatePayable,
+  useUpdateReceivable,
+  useUpdatePayable,
 } from "@/hooks/domain";
 import { formatBRL, formatDate } from "@/lib/formatters";
 import {
@@ -49,6 +51,7 @@ import {
   Wallet,
   AlertCircle,
   Loader2,
+  Pencil,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -85,8 +88,13 @@ function Financeiro() {
   const receivePayment = useReceivePayment();
   const createReceivable = useCreateReceivable();
   const createPayable = useCreatePayable();
+  const updateReceivable = useUpdateReceivable();
+  const updatePayable = useUpdatePayable();
 
   const [open, setOpen] = useState(false);
+  const [editReceivable, setEditReceivable] = useState<Receivable | null>(null);
+  const [editPayable, setEditPayable] = useState<Payable | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
   const [form, setForm] = useState({
     tipo: "receber",
     description: "",
@@ -311,6 +319,10 @@ function Financeiro() {
               actionLabel="Registrar recebimento"
               ActionIcon={HandCoins}
               isPending={receivePayment.isPending}
+              onEdit={(l) => {
+                setEditReceivable(l);
+                setEditOpen(true);
+              }}
             />
           </TabsContent>
           <TabsContent value="pagar">
@@ -321,10 +333,195 @@ function Financeiro() {
               actionLabel="Pagar"
               ActionIcon={CheckCircle2}
               showSupplier
+              onEdit={(l) => {
+                setEditPayable(l);
+                setEditOpen(true);
+              }}
             />
           </TabsContent>
         </Tabs>
       )}
+
+      <Dialog
+        open={editOpen}
+        onOpenChange={(v) => {
+          setEditOpen(v);
+          if (!v) {
+            setEditReceivable(null);
+            setEditPayable(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar lancamento</DialogTitle>
+          </DialogHeader>
+          {editReceivable && (
+            <form
+              className="space-y-3"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                try {
+                  await updateReceivable.mutateAsync({
+                    id: editReceivable.id,
+                    data: {
+                      description: String(fd.get("descricao")),
+                      amount: Number(fd.get("valor")),
+                      dueDate: String(fd.get("vencimento")),
+                      status: fd.get("status") as "open" | "partial" | "paid" | "cancelled",
+                    },
+                  });
+                  toast.success("Lancamento atualizado");
+                  setEditOpen(false);
+                  setEditReceivable(null);
+                } catch (err) {
+                  console.error(err);
+                  toast.error("Erro ao atualizar lancamento");
+                }
+              }}
+            >
+              <div className="space-y-1.5">
+                <Label>Descricao</Label>
+                <Input name="descricao" defaultValue={editReceivable.description} required />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Valor</Label>
+                  <Input
+                    name="valor"
+                    type="number"
+                    step="0.01"
+                    defaultValue={editReceivable.amount}
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Vencimento</Label>
+                  <Input
+                    name="vencimento"
+                    type="date"
+                    defaultValue={editReceivable.dueDate}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Status</Label>
+                <Select name="status" defaultValue={editReceivable.status}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="open">Aberto</SelectItem>
+                    <SelectItem value="partial">Parcial</SelectItem>
+                    <SelectItem value="paid">Pago</SelectItem>
+                    <SelectItem value="cancelled">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setEditOpen(false);
+                    setEditReceivable(null);
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={updateReceivable.isPending}>
+                  {updateReceivable.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                  Salvar
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+          {editPayable && (
+            <form
+              className="space-y-3"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                try {
+                  await updatePayable.mutateAsync({
+                    id: editPayable.id,
+                    data: {
+                      description: String(fd.get("descricao")),
+                      amount: Number(fd.get("valor")),
+                      dueDate: String(fd.get("vencimento")),
+                      status: fd.get("status") as "open" | "partial" | "paid" | "cancelled",
+                    },
+                  });
+                  toast.success("Lancamento atualizado");
+                  setEditOpen(false);
+                  setEditPayable(null);
+                } catch (err) {
+                  console.error(err);
+                  toast.error("Erro ao atualizar lancamento");
+                }
+              }}
+            >
+              <div className="space-y-1.5">
+                <Label>Descricao</Label>
+                <Input name="descricao" defaultValue={editPayable.description} required />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Valor</Label>
+                  <Input
+                    name="valor"
+                    type="number"
+                    step="0.01"
+                    defaultValue={editPayable.amount}
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Vencimento</Label>
+                  <Input
+                    name="vencimento"
+                    type="date"
+                    defaultValue={editPayable.dueDate}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Status</Label>
+                <Select name="status" defaultValue={editPayable.status}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="open">Aberto</SelectItem>
+                    <SelectItem value="partial">Parcial</SelectItem>
+                    <SelectItem value="paid">Pago</SelectItem>
+                    <SelectItem value="cancelled">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setEditOpen(false);
+                    setEditPayable(null);
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={updatePayable.isPending}>
+                  {updatePayable.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                  Salvar
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </PageContainer>
   );
 }
@@ -367,6 +564,7 @@ function LancamentosTable<T extends Receivable | Payable>({
   ActionIcon,
   showSupplier,
   isPending,
+  onEdit,
 }: {
   items: T[];
   customers: Customer[];
@@ -375,6 +573,7 @@ function LancamentosTable<T extends Receivable | Payable>({
   ActionIcon: LucideIcon;
   showSupplier?: boolean;
   isPending?: boolean;
+  onEdit?: (l: T) => void;
 }) {
   return (
     <Card className="p-3 md:p-4">
@@ -386,6 +585,7 @@ function LancamentosTable<T extends Receivable | Payable>({
             <TableHead>Vencimento</TableHead>
             <TableHead>Valor</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead></TableHead>
             <TableHead></TableHead>
           </TableRow>
         </TableHeader>
@@ -414,6 +614,13 @@ function LancamentosTable<T extends Receivable | Payable>({
               <TableCell>
                 <Badge variant={statusVariant(l.status)}>{statusLabel[l.status]}</Badge>
               </TableCell>
+              <TableCell>
+                {onEdit && (
+                  <Button variant="ghost" size="icon" onClick={() => onEdit(l)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                )}
+              </TableCell>
               <TableCell className="text-right">
                 {l.status !== "paid" ? (
                   <Button
@@ -440,7 +647,7 @@ function LancamentosTable<T extends Receivable | Payable>({
           ))}
           {!items.length && (
             <TableRow>
-              <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                 Sem lançamentos.
               </TableCell>
             </TableRow>

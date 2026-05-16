@@ -45,3 +45,30 @@ export const useCreatePayable = () => {
     },
   });
 };
+
+export const useUpdateReceivable = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<import("@/types/finance").Receivable>;
+    }) => services.finance.updateReceivable(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["receivables"] });
+    },
+  });
+};
+
+export const useUpdatePayable = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<import("@/types/finance").Payable> }) =>
+      services.finance.updatePayable(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payables"] });
+    },
+  });
+};

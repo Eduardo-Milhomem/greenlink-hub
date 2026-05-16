@@ -29,12 +29,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageContainer, PageHeader } from "@/components/layout/page";
-import { useCatalog, useCreateCatalogItem } from "@/hooks/domain";
+import { useCatalog, useCreateCatalogItem, useUpdateCatalogItem } from "@/hooks/domain";
 import { formatBRL } from "@/lib/formatters";
-import type { CatalogItemType } from "@/types/catalog";
-import { Loader2, Plus, AlertTriangle } from "lucide-react";
-import { toast } from "sonner";
+import type { CatalogItemType, CatalogItem } from "@/types/catalog";
 import { services } from "@/services";
+import { Loader2, Plus, AlertTriangle, Pencil } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/catalogo")({
   head: () => ({ meta: [{ title: "Catálogo — GreenLink ADM" }] }),
@@ -78,7 +78,11 @@ function CatalogoPage() {
   const { data: catalogo = [], isLoading, isError, error } = useCatalog();
   const createCatalogItem = useCreateCatalogItem();
   const [open, setOpen] = useState(false);
+  const [editItem, setEditItem] = useState<CatalogItem | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
   const [tipo, setTipo] = useState<CatalogItemType>("product");
+  const [editTipo, setEditTipo] = useState<CatalogItemType>("product");
+  const updateCatalogItem = useUpdateCatalogItem();
 
   const tipoLabel: Record<CatalogItemType, string> = {
     product: "Produto",
@@ -189,6 +193,135 @@ function CatalogoPage() {
           </Dialog>
         }
       />
+      <Dialog
+        open={editOpen}
+        onOpenChange={(v) => {
+          setEditOpen(v);
+          if (!v) setEditItem(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar item</DialogTitle>
+          </DialogHeader>
+          {editItem && (
+            <form
+              className="space-y-3"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                try {
+                  await updateCatalogItem.mutateAsync({
+                    id: editItem.id,
+                    data: {
+                      itemCode: String(fd.get("codigo")),
+                      name: String(fd.get("nome")),
+                      itemType: editTipo,
+                      unitCode: String(fd.get("unidade") || "un"),
+                      salePrice: Number(fd.get("preco") || 0),
+                      costPrice: Number(fd.get("custo") || 0),
+                      isActive: fd.get("ativo") === "true",
+                      trackStock: fd.get("estoque") === "true",
+                    },
+                  });
+                  toast.success("Item atualizado");
+                  setEditOpen(false);
+                  setEditItem(null);
+                } catch (err) {
+                  console.error(err);
+                  toast.error("Erro ao atualizar item");
+                }
+              }}
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Codigo</Label>
+                  <Input name="codigo" defaultValue={editItem.itemCode} required />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Tipo</Label>
+                  <Select value={editTipo} onValueChange={(v) => setEditTipo(v as CatalogItemType)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="product">Produto</SelectItem>
+                      <SelectItem value="service">Servico</SelectItem>
+                      <SelectItem value="kit">Kit</SelectItem>
+                      <SelectItem value="rental">Locacao</SelectItem>
+                      <SelectItem value="manufactured">Fabricado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nome</Label>
+                <Input name="nome" defaultValue={editItem.name} required />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Unidade</Label>
+                  <Input name="unidade" defaultValue={editItem.unitCode} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Preco</Label>
+                  <Input
+                    name="preco"
+                    type="number"
+                    step="0.01"
+                    defaultValue={editItem.salePrice}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Custo</Label>
+                  <Input name="custo" type="number" step="0.01" defaultValue={editItem.costPrice} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Status</Label>
+                  <Select name="ativo" defaultValue={editItem.isActive ? "true" : "false"}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">Ativo</SelectItem>
+                      <SelectItem value="false">Inativo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  name="estoque"
+                  id="estoque"
+                  value="true"
+                  defaultChecked={editItem.trackStock}
+                />
+                <Label htmlFor="estoque">Controla estoque</Label>
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setEditOpen(false);
+                    setEditItem(null);
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={updateCatalogItem.isPending}>
+                  {updateCatalogItem.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                  Salvar
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
       <Card className="p-3 md:p-4">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
@@ -222,6 +355,7 @@ function CatalogoPage() {
                     <TableHead>Un.</TableHead>
                     <TableHead>Preco</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -244,6 +378,19 @@ function CatalogoPage() {
                         ) : (
                           <Badge variant="outline">inativo</Badge>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setEditItem(i);
+                            setEditTipo(i.itemType);
+                            setEditOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}

@@ -166,4 +166,36 @@ export const financeService = {
     const { error: pError } = await supabase.from("payables").delete().eq("id", id);
     if (pError && pError.code !== "PGRST116") throw pError;
   },
+
+  updateReceivable: async (id: string, data: Partial<Receivable>) => {
+    const { data: updated, error } = await supabase
+      .from("receivables")
+      .update({
+        description: data.description,
+        due_date: data.dueDate,
+        amount: data.amount,
+        status: data.status,
+      })
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw error;
+    return mapReceivable(updated);
+  },
+
+  updatePayable: async (id: string, data: Partial<Payable>) => {
+    const { data: updated, error } = await supabase
+      .from("payables")
+      .update({
+        description: data.description,
+        due_date: data.dueDate,
+        amount: data.amount,
+        status: data.status,
+      })
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw error;
+    return mapPayable(updated);
+  },
 };
