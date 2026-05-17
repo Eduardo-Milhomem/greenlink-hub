@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,17 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Table,
   TableBody,
@@ -29,10 +40,23 @@ import {
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageContainer, PageHeader } from "@/components/layout/page";
-import { useCustomers, useCreateCustomer, useUpdateCustomer } from "@/hooks/domain";
+import {
+  useCustomers,
+  useCreateCustomer,
+  useUpdateCustomer,
+  useRemoveCustomer,
+  useQuotes,
+  useOrders,
+  useContracts,
+  useReceivables,
+  useRemoveQuote,
+  useRemoveOrder,
+  useRemoveContract,
+  useRemoveReceivable,
+} from "@/hooks/domain";
 import { formatDate } from "@/lib/formatters";
 import type { CustomerType, Customer } from "@/types/customer";
-import { Plus, Search, Loader2, Pencil } from "lucide-react";
+import { Plus, Search, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/clientes")({
@@ -42,13 +66,31 @@ export const Route = createFileRoute("/clientes")({
 
 function ClientesPage() {
   const { data: customers = [], isLoading } = useCustomers();
+  const { data: quotes = [] } = useQuotes();
+  const { data: orders = [] } = useOrders();
+  const { data: contracts = [] } = useContracts();
+  const { data: receivables = [] } = useReceivables();
   const createCustomer = useCreateCustomer();
   const updateCustomer = useUpdateCustomer();
+  const removeCustomer = useRemoveCustomer();
+  const removeQuote = useRemoveQuote();
+  const removeOrder = useRemoveOrder();
+  const removeContract = useRemoveContract();
+  const removeReceivable = useRemoveReceivable();
+  const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [tipo, setTipo] = useState<CustomerType>("pj");
+  const [deleteCustomerId, setDeleteCustomerId] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteRelated, setDeleteRelated] = useState<{
+    type: string;
+    id: string;
+    label: string;
+  } | null>(null);
+  const [deleteRelatedDialogOpen, setDeleteRelatedDialogOpen] = useState(false);
 
   const filtered = customers.filter(
     (c) =>
@@ -56,6 +98,15 @@ function ClientesPage() {
       c.documentNumber?.toLowerCase().includes(q.toLowerCase()) ||
       c.email?.toLowerCase().includes(q.toLowerCase()),
   );
+
+  const getCustomerQuotes = (customerId: string) =>
+    quotes.filter((q) => q.customerId === customerId);
+  const getCustomerOrders = (customerId: string) =>
+    orders.filter((o) => o.customerId === customerId);
+  const getCustomerContracts = (customerId: string) =>
+    contracts.filter((c) => c.customerId === customerId);
+  const getCustomerReceivables = (customerId: string) =>
+    receivables.filter((r) => r.customerId === customerId);
 
   return (
     <PageContainer>
@@ -267,7 +318,147 @@ function ClientesPage() {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="border-t pt-4 mt-4">
+                <h4 className="font-medium mb-3 text-sm">Vínculos do cliente</h4>
+                {(() => {
+                  const clienteQuotes = getCustomerQuotes(editCustomer.id);
+                  const clienteOrders = getCustomerOrders(editCustomer.id);
+                  const clienteContracts = getCustomerContracts(editCustomer.id);
+                  const clienteReceivables = getCustomerReceivables(editCustomer.id);
+                  if (
+                    clienteQuotes.length === 0 &&
+                    clienteOrders.length === 0 &&
+                    clienteContracts.length === 0 &&
+                    clienteReceivables.length === 0
+                  ) {
+                    return (
+                      <p className="text-sm text-muted-foreground">Sem vínculos registrados.</p>
+                    );
+                  }
+                  return (
+                    <div className="space-y-3">
+                      {clienteQuotes.length > 0 && (
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Orçamentos</p>
+                          {clienteQuotes.map((q) => (
+                            <div key={q.id} className="flex items-center justify-between py-1">
+                              <span className="text-sm">{q.quoteNumber}</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setDeleteRelated({
+                                    type: "quote",
+                                    id: q.id,
+                                    label: q.quoteNumber,
+                                  });
+                                  setDeleteRelatedDialogOpen(true);
+                                }}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {clienteOrders.length > 0 && (
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Pedidos</p>
+                          {clienteOrders.map((o) => (
+                            <div key={o.id} className="flex items-center justify-between py-1">
+                              <span className="text-sm">{o.orderNumber}</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setDeleteRelated({
+                                    type: "order",
+                                    id: o.id,
+                                    label: o.orderNumber,
+                                  });
+                                  setDeleteRelatedDialogOpen(true);
+                                }}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {clienteContracts.length > 0 && (
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Contratos</p>
+                          {clienteContracts.map((c) => (
+                            <div key={c.id} className="flex items-center justify-between py-1">
+                              <span className="text-sm">{c.contractNumber}</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setDeleteRelated({
+                                    type: "contract",
+                                    id: c.id,
+                                    label: c.contractNumber,
+                                  });
+                                  setDeleteRelatedDialogOpen(true);
+                                }}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {clienteReceivables.length > 0 && (
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Lançamentos</p>
+                          {clienteReceivables.map((r) => (
+                            <div key={r.id} className="flex items-center justify-between py-1">
+                              <span className="text-sm">
+                                {r.description} ({r.status})
+                              </span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setDeleteRelated({
+                                    type: "receivable",
+                                    id: r.id,
+                                    label: r.description,
+                                  });
+                                  setDeleteRelatedDialogOpen(true);
+                                }}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
               <DialogFooter>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => {
+                    setDeleteCustomerId(editCustomer.id);
+                    setDeleteDialogOpen(true);
+                  }}
+                  disabled={updateCustomer.isPending}
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Excluir
+                </Button>
+                <div className="flex-1" />
                 <Button
                   type="button"
                   variant="outline"
@@ -287,6 +478,107 @@ function ClientesPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={(v) => {
+          setDeleteDialogOpen(v);
+          if (!v) setDeleteCustomerId(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir cliente</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita e
+              removerá todos os dados associados (contatos, endereços, histórico).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteCustomerId(null)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!deleteCustomerId) return;
+                try {
+                  await removeCustomer.mutateAsync(deleteCustomerId);
+                  toast.success("Cliente excluído");
+                  setDeleteDialogOpen(false);
+                  setDeleteCustomerId(null);
+                  navigate({ to: "/clientes" });
+                } catch (err) {
+                  console.error(err);
+                  const e = err as { message?: string; code?: string };
+                  let message = "Erro ao excluir cliente";
+                  if (e.code === "42501") {
+                    message = "Sem permissão para excluir clientes.";
+                  } else if (e.code === "23503") {
+                    message =
+                      "Cliente possui vínculos. Remova primeiro orçamentos, pedidos, contratos ou lançamentos.";
+                  }
+                  toast.error(message);
+                  setDeleteDialogOpen(false);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {removeCustomer.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={deleteRelatedDialogOpen}
+        onOpenChange={(v) => {
+          setDeleteRelatedDialogOpen(v);
+          if (!v) setDeleteRelated(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir vínculo</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir "{deleteRelated?.label}"? Esta ação não pode ser
+              desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteRelated(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!deleteRelated) return;
+                try {
+                  if (deleteRelated.type === "quote")
+                    await removeQuote.mutateAsync(deleteRelated.id);
+                  else if (deleteRelated.type === "order")
+                    await removeOrder.mutateAsync(deleteRelated.id);
+                  else if (deleteRelated.type === "contract")
+                    await removeContract.mutateAsync(deleteRelated.id);
+                  else if (deleteRelated.type === "receivable")
+                    await removeReceivable.mutateAsync(deleteRelated.id);
+                  toast.success("Vínculo excluído");
+                  setDeleteRelatedDialogOpen(false);
+                  setDeleteRelated(null);
+                } catch (err) {
+                  console.error(err);
+                  toast.error("Erro ao excluir vínculo");
+                  setDeleteRelatedDialogOpen(false);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {(removeQuote.isPending ||
+                removeOrder.isPending ||
+                removeContract.isPending ||
+                removeReceivable.isPending) && <Loader2 className="h-4 w-4 animate-spin" />}
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Card className="p-3 md:p-4">
         <div className="flex items-center gap-2 mb-3">
           <div className="relative flex-1 max-w-sm">

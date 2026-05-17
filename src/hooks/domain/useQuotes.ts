@@ -50,6 +50,16 @@ export const useApproveQuote = () => {
   });
 };
 
+export const useRemoveQuote = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => services.quotes.remove(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quotes"] });
+    },
+  });
+};
+
 export const useGenerateOrder = () => {
   const queryClient = useQueryClient();
   return useMutation({

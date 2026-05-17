@@ -72,3 +72,23 @@ export const useUpdatePayable = () => {
     },
   });
 };
+
+export const useRemoveReceivable = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => services.finance.removeReceivable(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["receivables"] });
+    },
+  });
+};
+
+export const useRemovePayable = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => services.finance.removePayable(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payables"] });
+    },
+  });
+};

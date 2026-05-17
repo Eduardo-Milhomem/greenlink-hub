@@ -71,4 +71,9 @@ export const orderService = {
     const { error } = await supabase.from("customer_orders").update({ status: next }).eq("id", id);
     if (error) throw error;
   },
+
+  remove: async (id: string) => {
+    const { error } = await supabase.from("customer_orders").delete().eq("id", id);
+    if (error) throw error;
+  },
 };

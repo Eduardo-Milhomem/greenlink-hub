@@ -43,11 +43,7 @@ export const inventoryService = {
 
   addMovement: async (data: Partial<StockMovement>) => {
     const payload: StockMovementInsert = {
-      movement_type: (data.movementType ?? "adjustment") as
-        | "in"
-        | "out"
-        | "transfer"
-        | "adjustment",
+      movement_type: data.movementType ?? "adjustment",
       catalog_item_id: data.catalogItemId!,
       source_warehouse_id: data.sourceWarehouseId ?? null,
       target_warehouse_id: data.targetWarehouseId ?? null,

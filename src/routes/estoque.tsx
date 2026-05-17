@@ -31,7 +31,13 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageContainer, PageHeader } from "@/components/layout/page";
 import { formatDate } from "@/lib/formatters";
-import { useCatalog, useInventoryMovements, useServiceOrders } from "@/hooks/domain";
+import {
+  useCatalog,
+  useInventoryMovements,
+  useServiceOrders,
+  useAddStockMovement,
+  useUpdateMinimumStock,
+} from "@/hooks/domain";
 import type { StockMovementType } from "@/types/inventory";
 import { Plus, AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -58,6 +64,8 @@ function EstoquePage() {
   const { data: catalogo = [], isLoading: isLoadingCatalog } = useCatalog();
   const { data: movimentacoes = [], isLoading: isLoadingMovements } = useInventoryMovements();
   const { data: ordens = [], isLoading: isLoadingOrders } = useServiceOrders();
+  const addMovement = useAddStockMovement();
+  const updateMinStock = useUpdateMinimumStock();
 
   const produtos = catalogo.filter((i) => i.itemType !== "service");
   const [open, setOpen] = useState(false);
@@ -71,14 +79,32 @@ function EstoquePage() {
 
   const isLoading = isLoadingCatalog || isLoadingMovements || isLoadingOrders;
 
-  const submit = () => {
+  const submit = async () => {
     if (!form.itemId || !form.quantidade) {
       toast.error("Preencha item e quantidade.");
       return;
     }
-    toast.info("Lógica de movimentação em serviços.");
-    setOpen(false);
-    setForm({ itemId: "", tipo: "in", quantidade: "", motivo: "", osId: "" });
+    const qty = Number(form.quantidade);
+    if (qty <= 0) {
+      toast.error("Quantidade deve ser maior que zero.");
+      return;
+    }
+    try {
+      await addMovement.mutateAsync({
+        catalogItemId: form.itemId,
+        movementType: form.tipo,
+        quantity: qty,
+        notes: form.motivo || null,
+        referenceType: form.osId ? "service_order" : null,
+        referenceId: form.osId || null,
+      });
+      toast.success("Movimentação registrada.");
+      setOpen(false);
+      setForm({ itemId: "", tipo: "in", quantidade: "", motivo: "", osId: "" });
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao registrar movimentação.");
+    }
   };
 
   if (isLoading) {
@@ -186,7 +212,9 @@ function EstoquePage() {
                 <Button variant="outline" onClick={() => setOpen(false)}>
                   Cancelar
                 </Button>
-                <Button onClick={submit}>Registrar</Button>
+                <Button onClick={submit} disabled={addMovement.isPending}>
+                  {addMovement.isPending ? "Registrando..." : "Registrar"}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -227,7 +255,18 @@ function EstoquePage() {
                           type="number"
                           defaultValue={min}
                           className="h-7 w-20"
-                          onBlur={(e) => console.log("update min stock", p.id, e.target.value)}
+                          onBlur={(e) => {
+                            const val = Number(e.target.value);
+                            if (val !== min) {
+                              updateMinStock.mutate(
+                                { catalogItemId: p.id, minimumStock: val },
+                                {
+                                  onSuccess: () => toast.success("Estoque mínimo atualizado"),
+                                  onError: () => toast.error("Erro ao atualizar mínimo"),
+                                },
+                              );
+                            }
+                          }}
                         />
                       </TableCell>
                       <TableCell>

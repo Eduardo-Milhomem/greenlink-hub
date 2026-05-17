@@ -27,3 +27,13 @@ export const useUpdateOrderStatus = () => {
     },
   });
 };
+
+export const useRemoveOrder = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => services.orders.remove(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+    },
+  });
+};

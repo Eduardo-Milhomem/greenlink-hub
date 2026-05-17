@@ -167,6 +167,16 @@ export const financeService = {
     if (pError && pError.code !== "PGRST116") throw pError;
   },
 
+  removeReceivable: async (id: string) => {
+    const { error } = await supabase.from("receivables").delete().eq("id", id);
+    if (error) throw error;
+  },
+
+  removePayable: async (id: string) => {
+    const { error } = await supabase.from("payables").delete().eq("id", id);
+    if (error) throw error;
+  },
+
   updateReceivable: async (id: string, data: Partial<Receivable>) => {
     const { data: updated, error } = await supabase
       .from("receivables")

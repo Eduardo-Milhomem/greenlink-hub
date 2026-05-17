@@ -56,3 +56,13 @@ export const useAddContractItems = () => {
     },
   });
 };
+
+export const useRemoveContract = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => services.contracts.remove(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["contracts"] });
+    },
+  });
+};
